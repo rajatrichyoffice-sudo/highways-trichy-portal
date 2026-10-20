@@ -1,0 +1,20 @@
+{
+  "name": "Highways C&M Trichy - Road Chart Portal",
+  "short_name": "RoadChart",
+  "description": "Highways Department Trichy Division Road Chart & DLP Eligible Stretches Portal",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "orientation": "any",
+  "id": "/?source=pwa",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/rajatrichyoffice-sudo/highways-trichy-portal/main/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
