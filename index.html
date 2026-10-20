@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Highways C&M Trichy - Road Chart & Eligible Stretches Portal</title>
+  <title>Highways C&M Trichy - Road Chart, DLP & Abstracts Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -24,10 +24,10 @@
       body * {
         visibility: hidden;
       }
-      #bookletPrintArea, #bookletPrintArea * {
+      #bookletPrintArea, #bookletPrintArea *, #abstractPrintArea, #abstractPrintArea * {
         visibility: visible;
       }
-      #bookletPrintArea {
+      #bookletPrintArea, #abstractPrintArea {
         position: absolute;
         left: 0;
         top: 0;
@@ -64,7 +64,7 @@
         <div class="w-16 h-16 bg-blue-700 text-white flex items-center justify-center rounded-2xl mx-auto mb-3 text-2xl font-black shadow-lg shadow-blue-500/30">TN</div>
         <h2 class="text-lg font-black text-slate-900 uppercase tracking-wider">Highways Department</h2>
         <p class="text-xs font-bold text-blue-700 uppercase">Construction & Maintenance, Trichy Division</p>
-        <p class="text-xs text-slate-500 mt-1">Road Chart & DLP Eligible Stretches Portal</p>
+        <p class="text-xs text-slate-500 mt-1">Road Chart, DLP Eligible Stretches & Abstracts Portal</p>
       </div>
 
       <div class="space-y-4">
@@ -115,18 +115,21 @@
       </div>
     </header>
 
-    <!-- SECTION SWITCHER TABS -->
+    <!-- SECTION SWITCHER TABS (3 SECTIONS) -->
     <div class="flex border-b border-slate-300 gap-2">
-      <button id="tabRoadChart" onclick="switchTab('chart')" class="py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-blue-600 bg-white text-blue-700 shadow-xs">
+      <button id="tabRoadChart" onclick="switchTab('chart')" class="py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-blue-600 bg-white text-blue-700 shadow-xs">
         Section 1: Visual Road Chart
       </button>
-      <button id="tabEligible" onclick="switchTab('eligible')" class="py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
+      <button id="tabEligible" onclick="switchTab('eligible')" class="py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
         Section 2: Eligible Stretches & Proposal List
+      </button>
+      <button id="tabAbstract" onclick="switchTab('abstract')" class="py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
+        Section 3: Road Abstracts & Length Statements
       </button>
     </div>
 
     <!-- Navigation & Filters Bar -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-3">
+    <div id="filterBarContainer" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-3">
       <div>
         <label class="block text-xs font-bold text-slate-700 uppercase mb-1">1. Subdivision Filter</label>
         <select id="subdivisionSelect" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600" onchange="onSubdivisionFilterChange()">
@@ -142,8 +145,8 @@
         <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Search Road / Category</label>
         <input type="text" id="roadSearchInput" placeholder="Type Road name (SH, MDR...)" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 focus:bg-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-600" oninput="onRoadSearchInput()">
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">4. Select Road (<span id="roadCountBadge">0</span> roads: SH &gt; MDR &gt; ODR &gt; SCR by Length)</label>
+      <div id="roadDropdownWrapper">
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">4. Select Road (<span id="roadCountBadge">0</span> roads)</label>
         <select id="roadSelect" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600" onchange="renderCurrentTab()">
         </select>
       </div>
@@ -200,7 +203,6 @@
           <span id="chartScopeBadge" class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-lg font-black">Division Level</span>
         </div>
         <div class="flex flex-wrap gap-2">
-          <!-- ONE-CLICK BOOKLET PRINT OR SAVE AS PDF (A4 PORTRAIT) -->
           <button onclick="triggerBookletPrint('print')" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
             Print / Save as PDF (All Roads A4 Portrait)
@@ -261,14 +263,17 @@
         <div class="text-xs font-bold text-slate-700">
           Target Scope: <span id="eligibleScopeBadge" class="text-blue-700 font-black">Current Selected Road</span>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="exportEligibleToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- BULK ALL-ROADS EXCEL EXPORT BUTTON -->
+          <button onclick="exportAllEligibleToExcel()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            Export Eligible Stretches (Excel)
+            Export All Filtered Roads to Excel (Bulk)
           </button>
-          <button onclick="printSection('eligiblePrintArea', 'Eligible_Stretches')" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-            Print Eligible Stretches (PDF)
+          <button onclick="exportEligibleToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+            Export Current Road (Excel)
+          </button>
+          <button onclick="printSection('eligiblePrintArea', 'Eligible_Stretches')" class="bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+            Print Current Road (PDF)
           </button>
         </div>
       </div>
@@ -324,6 +329,108 @@
       </div>
     </div>
 
+    <!-- ================= SECTION 3: ROAD ABSTRACTS CONTAINER ================= -->
+    <div id="sectionAbstractContainer" class="hidden space-y-4">
+      <div class="flex flex-wrap justify-between items-center gap-2 bg-white p-3 rounded-xl border border-slate-200">
+        <div class="text-xs font-bold text-slate-700 flex items-center gap-2">
+          <span>Abstract Scope:</span>
+          <span id="abstractScopeBadge" class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-lg font-black">Division Master</span>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="exportAbstractToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Export Abstracts (Excel)
+          </button>
+          <button onclick="printSection('abstractPrintArea', 'Road_Abstracts')" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Print Abstracts (PDF)
+          </button>
+        </div>
+      </div>
+
+      <div id="abstractPrintArea" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+        <!-- Abstract Header -->
+        <div class="text-center border-b pb-4">
+          <h2 class="text-base font-black uppercase tracking-wider text-slate-900">Highways Department, Tamil Nadu</h2>
+          <h3 class="text-xs font-bold text-slate-600 uppercase">Construction & Maintenance, Tiruchirappalli Division</h3>
+          <div class="mt-2 text-sm font-black text-indigo-900 bg-indigo-50 py-1.5 px-4 rounded-full inline-block border border-indigo-200" id="abstractReportTitle">
+            Official Road Length Statement & Category-Wise Abstracts
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3" id="abstractKpiCards">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Table 1: Subdivision & Section Wise Abstract -->
+        <div class="space-y-2">
+          <div class="flex justify-between items-center">
+            <h4 class="text-xs font-black uppercase tracking-wide text-slate-900 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 bg-blue-700 rounded-sm inline-block"></span>
+              1. Subdivision & Section Wise Length Abstract
+            </h4>
+            <span class="text-[11px] text-slate-500 font-bold">Lengths in Kilometers (Km)</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse border border-slate-300 text-center" id="sectionAbstractTable">
+              <thead>
+                <tr class="bg-slate-800 text-white font-bold uppercase text-[11px]">
+                  <th class="p-2 border border-slate-300">S.No</th>
+                  <th class="p-2 border border-slate-300">Division</th>
+                  <th class="p-2 border border-slate-300">Sub Division</th>
+                  <th class="p-2 border border-slate-300">Section</th>
+                  <th class="p-2 border border-slate-300 bg-blue-900">SH (Km)</th>
+                  <th class="p-2 border border-slate-300 bg-cyan-900">MDR (Km)</th>
+                  <th class="p-2 border border-slate-300 bg-amber-900">ODR (Km)</th>
+                  <th class="p-2 border border-slate-300 bg-purple-900">SCR (Km)</th>
+                  <th class="p-2 border border-slate-300 bg-emerald-900">Total Length (Km)</th>
+                </tr>
+              </thead>
+              <tbody id="sectionAbstractBody"></tbody>
+              <tfoot id="sectionAbstractFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Table 2: Constituency Wise Abstract -->
+        <div class="space-y-2 pt-2">
+          <div class="flex justify-between items-center">
+            <h4 class="text-xs font-black uppercase tracking-wide text-slate-900 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 bg-emerald-700 rounded-sm inline-block"></span>
+              2. Assembly Constituency Wise Length Abstract
+            </h4>
+            <span class="text-[11px] text-slate-500 font-bold">Assembly Constituency / MLA Wise Distribution</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse border border-slate-300 text-center" id="constituencyAbstractTable">
+              <thead>
+                <tr class="bg-slate-800 text-white font-bold uppercase text-[11px]">
+                  <th class="p-2 border border-slate-300">S.No</th>
+                  <th class="p-2 border border-slate-300">Assembly Constituency</th>
+                  <th class="p-2 border border-slate-300 bg-blue-900">SH (Km)</th>
+                  <th class="p-2 border border-slate-300 bg-cyan-900">MDR (Km)</th>
+                  <th class="p-2 border border-slate-300 bg-amber-900">ODR (Km)</th>
+                  <th class="p-2 border border-slate-300 bg-purple-900">SCR (Km)</th>
+                  <th class="p-2 border border-slate-300 bg-emerald-900">Total Length (Km)</th>
+                </tr>
+              </thead>
+              <tbody id="constituencyAbstractBody"></tbody>
+              <tfoot id="constituencyAbstractFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Official Signatures Strip -->
+        <div class="mt-8 flex justify-between items-center text-[11px] text-slate-500 pt-4 border-t">
+          <span>Prepared by: Computer Operator</span>
+          <span>Verified by: Superintendent (H)</span>
+          <span>Assistant Divisional Engineer (H)</span>
+          <span>Divisional Engineer (H), C&M Trichy</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- HIDDEN PRINT AREA FOR A4 PORTRAIT BOOKLET (ALL ROADS) -->
@@ -335,7 +442,7 @@
     // 1. SUPABASE CLOUD CONFIGURATION
     // ==========================================
     const SUPABASE_URL = "https://msdgmmfzqukhahfxemwp.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zZGdtbWZ6cXVraGFoZnhlbXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjY5NTEsImV4cCI6MjEwODA0Mjk1MX0.dNLgMjpQqef-ZLq7SixU0HuYtiiF1Jv_3lMPOu8F9co"; 
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zZGdtbWZ6cXVraGFoZnhlbXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk4NTg2MjQsImV4cCI6MjA1NTQzNDYyNH0.xxxx"; 
     let supabaseClient = null;
 
     if (typeof window.supabase !== "undefined" && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("xxxx")) {
@@ -419,20 +526,41 @@
       currentTab = tab;
       const btnChart = document.getElementById("tabRoadChart");
       const btnElig = document.getElementById("tabEligible");
+      const btnAbs = document.getElementById("tabAbstract");
+
       const contChart = document.getElementById("sectionChartContainer");
       const contElig = document.getElementById("sectionEligibleContainer");
+      const contAbs = document.getElementById("sectionAbstractContainer");
+      const remarkBox = document.getElementById("remarkBox");
+      const roadDropdownWrapper = document.getElementById("roadDropdownWrapper");
+
+      // Reset tabs styling
+      const inactiveClass = "py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+      btnChart.className = inactiveClass;
+      btnElig.className = inactiveClass;
+      btnAbs.className = inactiveClass;
+
+      contChart.classList.add("hidden");
+      contElig.classList.add("hidden");
+      contAbs.classList.add("hidden");
 
       if (tab === "chart") {
-        btnChart.className = "py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-blue-600 bg-white text-blue-700 shadow-xs";
-        btnElig.className = "py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+        btnChart.className = "py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-blue-600 bg-white text-blue-700 shadow-xs";
         contChart.classList.remove("hidden");
-        contElig.classList.add("hidden");
-      } else {
-        btnElig.className = "py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-emerald-600 bg-white text-emerald-700 shadow-xs";
-        btnChart.className = "py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+        if (remarkBox) remarkBox.classList.remove("hidden");
+        if (roadDropdownWrapper) roadDropdownWrapper.classList.remove("hidden");
+      } else if (tab === "eligible") {
+        btnElig.className = "py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-emerald-600 bg-white text-emerald-700 shadow-xs";
         contElig.classList.remove("hidden");
-        contChart.classList.add("hidden");
+        if (remarkBox) remarkBox.classList.remove("hidden");
+        if (roadDropdownWrapper) roadDropdownWrapper.classList.remove("hidden");
+      } else {
+        btnAbs.className = "py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-indigo-600 bg-white text-indigo-700 shadow-xs";
+        contAbs.classList.remove("hidden");
+        if (remarkBox) remarkBox.classList.add("hidden");
+        if (roadDropdownWrapper) roadDropdownWrapper.classList.add("hidden");
       }
+
       renderCurrentTab();
     }
 
@@ -535,6 +663,8 @@
           if (!r || !r[4] || !r[11]) continue;
           let sub = String(r[4]).trim();
           let sec = String(r[5] || sub).trim();
+          let ac = String(r[7] || '').trim(); // Assembly Constituency
+          let pc = String(r[8] || '').trim(); // Parliament Constituency
           let cat = String(r[9] || 'ODR').trim().toUpperCase();
           let name = String(r[11]).trim();
           let start = parseFloat(r[12]) || 0;
@@ -542,10 +672,29 @@
           let len = parseFloat(r[14]) || (end - start);
 
           if (!roadMap[name]) {
-            roadMap[name] = { id: "rd_" + (Object.keys(roadMap).length + 1), name: name, cat: cat, subs: [], start: start, end: end, jurisdiction: [] };
+            roadMap[name] = { 
+              id: "rd_" + (Object.keys(roadMap).length + 1), 
+              name: name, 
+              cat: cat, 
+              subs: [], 
+              acs: [],
+              start: start, 
+              end: end, 
+              jurisdiction: [] 
+            };
           }
           if (!roadMap[name].subs.includes(sub)) roadMap[name].subs.push(sub);
-          roadMap[name].jurisdiction.push({ sub: sub, sec: sec, start: start, end: end, len: len });
+          if (ac && !roadMap[name].acs.includes(ac)) roadMap[name].acs.push(ac);
+
+          roadMap[name].jurisdiction.push({ 
+            sub: sub, 
+            sec: sec, 
+            ac: ac,
+            pc: pc,
+            start: start, 
+            end: end, 
+            len: len 
+          });
           roadMap[name].start = Math.min(roadMap[name].start, start);
           roadMap[name].end = Math.max(roadMap[name].end, end);
           roadMap[name].len = Math.round((roadMap[name].end - roadMap[name].start) * 1000) / 1000;
@@ -596,10 +745,12 @@
     function onSubdivisionFilterChange() {
       populateSectionDropdown();
       populateRoadDropdown();
+      if (currentTab === "abstract") renderRoadAbstracts();
     }
 
     function onSectionFilterChange() {
       populateRoadDropdown();
+      if (currentTab === "abstract") renderRoadAbstracts();
     }
 
     function onRoadSearchInput() {
@@ -776,7 +927,65 @@
       return { chartStart, chartEnd, viewLabel };
     }
 
+    // CORE REUSABLE ELIGIBILITY CALCULATION FUNCTION FOR SINGLE / MULTI-ROADS
+    function getRoadStretchesAnalysis(roadObj) {
+      const { chartStart, chartEnd } = getRoadLimitsForUser(roadObj);
+      const roadWorks = worksHistory.filter(w => w.roadId === roadObj.id);
+      const stepKm = 0.2;
+
+      let stretchBlocks = [];
+      for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
+        let bStart = km;
+        let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
+        let activeDlpWork = null, latestWork = null;
+
+        roadWorks.forEach(w => {
+          if (bStart >= w.from && bEnd <= w.to) {
+            const dlpInfo = isWorkUnderDlp(w);
+            if (dlpInfo.underDlp) activeDlpWork = { ...w, ...dlpInfo };
+            latestWork = { ...w, ...dlpInfo };
+          }
+        });
+
+        stretchBlocks.push({
+          start: bStart,
+          end: bEnd,
+          activeDlpWork: activeDlpWork,
+          latestWork: latestWork,
+          isEligible: (activeDlpWork === null)
+        });
+      }
+
+      let consolidated = [];
+      stretchBlocks.forEach(blk => {
+        if (consolidated.length === 0) {
+          consolidated.push({
+            start: blk.start, end: blk.end, isEligible: blk.isEligible,
+            work: blk.activeDlpWork || blk.latestWork
+          });
+        } else {
+          let last = consolidated[consolidated.length - 1];
+          let sameWork = (!last.work && !blk.work) || (last.work && blk.work && last.work.scheme === blk.work.scheme && last.work.year === blk.work.year);
+          if (last.isEligible === blk.isEligible && sameWork) {
+            last.end = blk.end;
+          } else {
+            consolidated.push({
+              start: blk.start, end: blk.end, isEligible: blk.isEligible,
+              work: blk.activeDlpWork || blk.latestWork
+            });
+          }
+        }
+      });
+
+      return consolidated;
+    }
+
     function renderCurrentTab() {
+      if (currentTab === "abstract") {
+        renderRoadAbstracts();
+        return;
+      }
+
       const roadId = document.getElementById("roadSelect").value;
       const roadObj = masterRoads.find(r => r.id === roadId);
       const titleChart = document.getElementById("chartRoadTitle");
@@ -829,50 +1038,7 @@
       }
 
       // 2. DLP & Stretches Consolidation
-      let stretchBlocks = [];
-      for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
-        let bStart = km;
-        let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
-        let activeDlpWork = null, latestWork = null;
-
-        roadWorks.forEach(w => {
-          if (bStart >= w.from && bEnd <= w.to) {
-            const dlpInfo = isWorkUnderDlp(w);
-            if (dlpInfo.underDlp) activeDlpWork = { ...w, ...dlpInfo };
-            latestWork = { ...w, ...dlpInfo };
-          }
-        });
-
-        stretchBlocks.push({
-          start: bStart,
-          end: bEnd,
-          activeDlpWork: activeDlpWork,
-          latestWork: latestWork,
-          isEligible: (activeDlpWork === null)
-        });
-      }
-
-      let consolidated = [];
-      stretchBlocks.forEach(blk => {
-        if (consolidated.length === 0) {
-          consolidated.push({
-            start: blk.start, end: blk.end, isEligible: blk.isEligible,
-            work: blk.activeDlpWork || blk.latestWork
-          });
-        } else {
-          let last = consolidated[consolidated.length - 1];
-          let sameWork = (!last.work && !blk.work) || (last.work && blk.work && last.work.scheme === blk.work.scheme && last.work.year === blk.work.year);
-          if (last.isEligible === blk.isEligible && sameWork) {
-            last.end = blk.end;
-          } else {
-            consolidated.push({
-              start: blk.start, end: blk.end, isEligible: blk.isEligible,
-              work: blk.activeDlpWork || blk.latestWork
-            });
-          }
-        }
-      });
-
+      const consolidated = getRoadStretchesAnalysis(roadObj);
       let totalEligibleKm = 0, totalDlpKm = 0;
       let eligibleStrings = [], dlpStrings = [];
       const subJuris = roadObj.jurisdiction[0] || { sub: "Trichy", sec: "Section" };
@@ -948,6 +1114,242 @@
       });
       jurisHtml += `</div>`;
       remarkJuris.innerHTML = jurisHtml;
+    }
+
+    // =========================================================================
+    // SECTION 3: ROAD ABSTRACTS CALCULATION & RENDERING ENGINE
+    // =========================================================================
+    function renderRoadAbstracts() {
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      const selectedSec = document.getElementById("sectionSelect") ? document.getElementById("sectionSelect").value : "ALL";
+      
+      const abstractScopeBadge = document.getElementById("abstractScopeBadge");
+      const abstractReportTitle = document.getElementById("abstractReportTitle");
+      const kpiContainer = document.getElementById("abstractKpiCards");
+      const secTbody = document.getElementById("sectionAbstractBody");
+      const secTfoot = document.getElementById("sectionAbstractFoot");
+      const acTbody = document.getElementById("constituencyAbstractBody");
+      const acTfoot = document.getElementById("constituencyAbstractFoot");
+
+      secTbody.innerHTML = "";
+      secTfoot.innerHTML = "";
+      acTbody.innerHTML = "";
+      acTfoot.innerHTML = "";
+      kpiContainer.innerHTML = "";
+
+      let scopeLabel = "Tiruchirappalli Division (Full Master Abstract)";
+      if (selectedSec !== "ALL") scopeLabel = `${selectedSec} Section Length Statement`;
+      else if (selectedSub !== "ALL") scopeLabel = `${selectedSub} Subdivision Length Statement`;
+
+      if (abstractScopeBadge) abstractScopeBadge.innerText = scopeLabel;
+      if (abstractReportTitle) abstractReportTitle.innerText = `${scopeLabel} | Category-Wise Abstracts (SH / MDR / ODR / SCR)`;
+
+      // Data aggregation buckets
+      let sectionMap = {};       // key: "sub__sec"
+      let constituencyMap = {};  // key: "ac"
+      let totals = { SH: 0, MDR: 0, ODR: 0, SCR: 0, TOTAL: 0 };
+
+      masterRoads.forEach(road => {
+        const cat = (road.cat || 'ODR').toUpperCase().trim();
+        if (road.jurisdiction) {
+          road.jurisdiction.forEach(j => {
+            const sub = j.sub || 'Trichy';
+            const sec = j.sec || sub;
+            const ac = j.ac || 'Unspecified';
+            const len = parseFloat(j.len) || 0;
+
+            // Apply User / Screen Filter
+            if (currentUser.role === "subdivision" && sub !== currentUser.subdivision) return;
+            if (selectedSub !== "ALL" && sub !== selectedSub) return;
+            if (selectedSec !== "ALL" && sec !== selectedSec) return;
+
+            // 1. Section Aggregation
+            const secKey = `${sub}__${sec}`;
+            if (!sectionMap[secKey]) {
+              sectionMap[secKey] = { sub: sub, sec: sec, SH: 0, MDR: 0, ODR: 0, SCR: 0, Total: 0 };
+            }
+            if (sectionMap[secKey][cat] !== undefined) {
+              sectionMap[secKey][cat] += len;
+            } else {
+              sectionMap[secKey].ODR += len;
+            }
+            sectionMap[secKey].Total += len;
+
+            // 2. Constituency Aggregation
+            if (!constituencyMap[ac]) {
+              constituencyMap[ac] = { ac: ac, SH: 0, MDR: 0, ODR: 0, SCR: 0, Total: 0 };
+            }
+            if (constituencyMap[ac][cat] !== undefined) {
+              constituencyMap[ac][cat] += len;
+            } else {
+              constituencyMap[ac].ODR += len;
+            }
+            constituencyMap[ac].Total += len;
+
+            // 3. Overall Totals
+            if (totals[cat] !== undefined) totals[cat] += len;
+            totals.TOTAL += len;
+          });
+        }
+      });
+
+      // KPI Summary Cards
+      kpiContainer.innerHTML = `
+        <div class="bg-slate-900 text-white p-3 rounded-xl shadow-xs">
+          <div class="text-[10px] uppercase font-bold text-slate-400">Total Road Network</div>
+          <div class="text-lg font-black text-white mt-0.5">${totals.TOTAL.toFixed(3)} <span class="text-xs font-semibold text-slate-400">Km</span></div>
+        </div>
+        <div class="bg-blue-700 text-white p-3 rounded-xl shadow-xs">
+          <div class="text-[10px] uppercase font-bold text-blue-200">State Highways (SH)</div>
+          <div class="text-lg font-black mt-0.5">${totals.SH.toFixed(3)} <span class="text-xs font-semibold text-blue-200">Km</span></div>
+        </div>
+        <div class="bg-cyan-700 text-white p-3 rounded-xl shadow-xs">
+          <div class="text-[10px] uppercase font-bold text-cyan-200">Major District (MDR)</div>
+          <div class="text-lg font-black mt-0.5">${totals.MDR.toFixed(3)} <span class="text-xs font-semibold text-cyan-200">Km</span></div>
+        </div>
+        <div class="bg-amber-600 text-white p-3 rounded-xl shadow-xs">
+          <div class="text-[10px] uppercase font-bold text-amber-100">Other District (ODR)</div>
+          <div class="text-lg font-black mt-0.5">${totals.ODR.toFixed(3)} <span class="text-xs font-semibold text-amber-100">Km</span></div>
+        </div>
+        <div class="bg-purple-700 text-white p-3 rounded-xl shadow-xs">
+          <div class="text-[10px] uppercase font-bold text-purple-200">Special Component (SCR)</div>
+          <div class="text-lg font-black mt-0.5">${totals.SCR.toFixed(3)} <span class="text-xs font-semibold text-purple-200">Km</span></div>
+        </div>
+      `;
+
+      // 1. Populate Section Table
+      const secList = Object.values(sectionMap).sort((a, b) => a.sub.localeCompare(b.sub) || a.sec.localeCompare(b.sec));
+      secList.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.className = i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/70 hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-2 border border-slate-300 font-bold">${i + 1}</td>
+          <td class="p-2 border border-slate-300 font-semibold text-slate-700">Trichy</td>
+          <td class="p-2 border border-slate-300 font-semibold text-slate-900">${row.sub}</td>
+          <td class="p-2 border border-slate-300 font-semibold text-slate-800">${row.sec}</td>
+          <td class="p-2 border border-slate-300 font-medium">${row.SH.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${row.MDR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${row.ODR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${row.SCR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-black text-blue-900 bg-blue-50/50">${row.Total.toFixed(3)}</td>
+        `;
+        secTbody.appendChild(tr);
+      });
+
+      secTfoot.innerHTML = `
+        <tr class="bg-slate-900 text-white font-black text-[11px] uppercase">
+          <td colspan="4" class="p-2 border border-slate-800 text-right pr-4">Total Length:</td>
+          <td class="p-2 border border-slate-800">${totals.SH.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800">${totals.MDR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800">${totals.ODR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800">${totals.SCR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800 bg-emerald-700 text-white">${totals.TOTAL.toFixed(3)}</td>
+        </tr>
+      `;
+
+      // 2. Populate Constituency Table
+      const acList = Object.values(constituencyMap).sort((a, b) => b.Total - a.Total);
+      acList.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.className = i % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/70 hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-2 border border-slate-300 font-bold">${i + 1}</td>
+          <td class="p-2 border border-slate-300 font-bold text-slate-900 text-left pl-4">${row.ac} Constituency</td>
+          <td class="p-2 border border-slate-300 font-medium">${row.SH.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${row.MDR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${row.ODR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${row.SCR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-black text-indigo-900 bg-indigo-50/50">${row.Total.toFixed(3)}</td>
+        `;
+        acTbody.appendChild(tr);
+      });
+
+      acTfoot.innerHTML = `
+        <tr class="bg-slate-900 text-white font-black text-[11px] uppercase">
+          <td colspan="2" class="p-2 border border-slate-800 text-right pr-4">Total Length:</td>
+          <td class="p-2 border border-slate-800">${totals.SH.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800">${totals.MDR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800">${totals.ODR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800">${totals.SCR.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800 bg-emerald-700 text-white">${totals.TOTAL.toFixed(3)}</td>
+        </tr>
+      `;
+    }
+
+    // EXPORT ALL ROADS ELIGIBLE LIST TO EXCEL (COMPREHENSIVE DIVISION / SUBDIVISION STATEMENT)
+    function exportAllEligibleToExcel() {
+      const list = getFilteredRoadsList();
+
+      if (list.length === 0) {
+        alert("Export seiya roads data ethuvum illai!");
+        return;
+      }
+
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      const selectedSec = document.getElementById("sectionSelect") ? document.getElementById("sectionSelect").value : "ALL";
+
+      let exportRows = [];
+      let sNo = 1;
+
+      list.forEach(road => {
+        const { chartStart, chartEnd } = getRoadLimitsForUser(road);
+        const subJuris = road.jurisdiction[0] || { sub: "Trichy", sec: "Section" };
+        const stretches = getRoadStretchesAnalysis(road);
+
+        stretches.forEach(c => {
+          let len = Math.round((c.end - c.start) * 1000) / 1000;
+          let statusDesc = c.isEligible ? "ELIGIBLE FOR PROPOSAL" : `UNDER DLP (Upto ${c.work ? c.work.dlpExpiryYear : 'Active'})`;
+          let schemeInfo = (c.work && c.work.scheme) ? `${c.work.scheme} (${c.work.year})` : "Nil";
+
+          exportRows.push({
+            "Sl.No": sNo++,
+            "Sub Division": subJuris.sub,
+            "Section": subJuris.sec,
+            "Category": road.cat,
+            "Name of the Road": road.name,
+            "Road Start (Km)": road.start.toFixed(3),
+            "Road End (Km)": road.end.toFixed(3),
+            "Total Length (Km)": road.len.toFixed(3),
+            "Stretch Start (Km)": formatFurlong(c.start),
+            "Stretch End (Km)": formatFurlong(c.end),
+            "Stretch Length (Km)": len.toFixed(3),
+            "DLP / Proposal Status": statusDesc,
+            "Previous Scheme Details": schemeInfo
+          });
+        });
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Eligible_Stretches_Master");
+
+      let fileScope = (selectedSec !== "ALL") ? `Section_${selectedSec}` : (selectedSub !== "ALL" ? `Subdivision_${selectedSub}` : "Division_Full_Master");
+      XLSX.writeFile(wb, `Trichy_Highways_All_Roads_Eligible_Statement_${fileScope}.xlsx`);
+    }
+
+    // EXPORT CURRENT ROAD ELIGIBLE TO EXCEL
+    function exportCurrentRoadEligibleToExcel() {
+      const table = document.getElementById("eligibleExportTable");
+      const wb = XLSX.utils.table_to_book(table, { sheet: "Eligible_Stretches" });
+      const roadSelect = document.getElementById("roadSelect");
+      const roadName = roadSelect.options[roadSelect.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, "_") || "Road";
+      XLSX.writeFile(wb, `${roadName}_Eligible_Stretches.xlsx`);
+    }
+
+    // EXPORT ABSTRACT TABLES TO EXCEL (SUBDIVISION, SECTION & CONSTITUENCY SHEETS)
+    function exportAbstractToExcel() {
+      const wb = XLSX.utils.book_new();
+      
+      const secTable = document.getElementById("sectionAbstractTable");
+      const ws1 = XLSX.utils.table_to_sheet(secTable);
+      XLSX.utils.book_append_sheet(wb, ws1, "Section_Abstract");
+
+      const acTable = document.getElementById("constituencyAbstractTable");
+      const ws2 = XLSX.utils.table_to_sheet(acTable);
+      XLSX.utils.book_append_sheet(wb, ws2, "Constituency_Abstract");
+
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      XLSX.writeFile(wb, `Trichy_Highways_Road_Abstracts_${selectedSub}.xlsx`);
     }
 
     // MULTI-PAGE ROAD CHART BOOKLET BUILDER (ALL ROADS IN VIEW, SORTED SH > MDR > ODR > SCR, 200M FURLONG, PAGE NUMBERS)
@@ -1087,18 +1489,10 @@
       }
     }
 
-    function exportEligibleToExcel() {
-      const table = document.getElementById("eligibleExportTable");
-      const wb = XLSX.utils.table_to_book(table, { sheet: "Eligible_Stretches" });
-      const roadSelect = document.getElementById("roadSelect");
-      const roadName = roadSelect.options[roadSelect.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, "_") || "Road";
-      XLSX.writeFile(wb, `${roadName}_Eligible_Stretches.xlsx`);
-    }
-
     function printSection(elementId, filePrefix) {
       const element = document.getElementById(elementId);
       const roadSelect = document.getElementById("roadSelect");
-      const roadName = roadSelect.options[roadSelect.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, "_") || "Road";
+      const roadName = roadSelect.options[roadSelect.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, "_") || "Report";
 
       html2pdf().from(element).set({
         margin: [5, 5, 5, 5],
