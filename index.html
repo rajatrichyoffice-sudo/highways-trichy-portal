@@ -564,7 +564,7 @@
       renderCurrentTab();
     }
 
-    async function loadDataFromSupabase() {
+   async function loadDataFromSupabase() {
       const syncBadge = document.getElementById("syncBadge");
       if (!supabaseClient) {
         if (syncBadge) {
@@ -599,6 +599,11 @@
         if (syncBadge) {
           syncBadge.innerText = `Online Sync (${masterRoads.length} Roads)`;
           syncBadge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800";
+        }
+        
+        // Mobile-il data vanthavudan abstract auto-refresh aaga
+        if (currentTab === "abstract") {
+          renderRoadAbstracts();
         }
       } catch (err) {
         console.warn("Supabase fetch failed, using local cache:", err);
@@ -646,7 +651,7 @@
       onSubdivisionFilterChange();
     }
 
-    async function handleExcelUpload(event) {
+async function handleExcelUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
 
@@ -658,7 +663,7 @@
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
         let roadMap = {};
-        for (let i = 2; i < rows.length; i++) {
+        for (let i = 0; i < rows.length; i++) {
           let r = rows[i];
           if (!r || !r[4] || !r[11]) continue;
           let sub = String(r[4]).trim();
@@ -667,6 +672,10 @@
           let pc = String(r[8] || '').trim(); // Parliament Constituency
           let cat = String(r[9] || 'ODR').trim().toUpperCase();
           let name = String(r[11]).trim();
+          
+          // Skip header row if it contains column titles
+          if (sub.toLowerCase() === "sub division" || sub.toLowerCase() === "subdivision" || name.toLowerCase().includes("name of the road")) continue;
+
           let start = parseFloat(r[12]) || 0;
           let end = parseFloat(r[13]) || 0;
           let len = parseFloat(r[14]) || (end - start);
@@ -677,14 +686,12 @@
               name: name, 
               cat: cat, 
               subs: [], 
-              acs: [],
               start: start, 
               end: end, 
               jurisdiction: [] 
             };
           }
           if (!roadMap[name].subs.includes(sub)) roadMap[name].subs.push(sub);
-          if (ac && !roadMap[name].acs.includes(ac)) roadMap[name].acs.push(ac);
 
           roadMap[name].jurisdiction.push({ 
             sub: sub, 
@@ -705,13 +712,27 @@
           masterRoads = uploadedList;
           localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
 
+          // Supabase-kku schema-vudan sariyaana columns mattum payload-aaga anuppudhal
           if (supabaseClient) {
             try {
               document.getElementById("syncBadge").innerText = "Uploading to Cloud DB...";
               await supabaseClient.from("master_roads").delete().neq("id", "none");
-              for (let i = 0; i < uploadedList.length; i += 50) {
-                const chunk = uploadedList.slice(i, i + 50);
-                await supabaseClient.from("master_roads").upsert(chunk);
+
+              const supabasePayload = uploadedList.map(r => ({
+                id: r.id,
+                name: r.name,
+                cat: r.cat,
+                subs: r.subs,
+                start: r.start,
+                end: r.end,
+                len: r.len,
+                jurisdiction: r.jurisdiction
+              }));
+
+              for (let i = 0; i < supabasePayload.length; i += 50) {
+                const chunk = supabasePayload.slice(i, i + 50);
+                const { error: upsertErr } = await supabaseClient.from("master_roads").upsert(chunk);
+                if (upsertErr) console.error("Supabase chunk error:", upsertErr);
               }
               document.getElementById("syncBadge").innerText = `Cloud Synced (${uploadedList.length} Roads)`;
             } catch (err) {
@@ -719,7 +740,7 @@
             }
           }
 
-          alert(`Excel Upload Success! ${masterRoads.length} unique roads successfully compiled and saved for all users!`);
+          alert(`Excel Upload Success! ${masterRoads.length} unique roads successfully compiled and saved to Cloud for all users!`);
           onSubdivisionFilterChange();
         } else {
           alert("Excel file-il roads data kandupidikka mudiyavillai!");
