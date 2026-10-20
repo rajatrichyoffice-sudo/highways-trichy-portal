@@ -12,9 +12,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Road Chart Trichy">
- <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="/manifest.json">
   <!-- Supabase Cloud Database Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    @media print {
+      .page-break { page-break-after: always; break-after: page; }
+    }
+  </style>
 </head>
 <body class="bg-slate-100 font-sans min-h-screen text-slate-800">
 
@@ -58,6 +63,7 @@
           <span class="text-xs font-medium text-slate-500">Logged in as:</span>
           <span id="userBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800">Admin</span>
           <span id="jurisdictionBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">Division Level</span>
+          <span id="syncBadge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">Connecting...</span>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
@@ -93,11 +99,11 @@
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">2. Search Road Name</label>
-        <input type="text" id="roadSearchInput" placeholder="Type Road name to filter..." class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 focus:bg-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-600" oninput="onRoadSearchInput()">
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">2. Search Road Name / Category</label>
+        <input type="text" id="roadSearchInput" placeholder="Type Road name (e.g. SH, MDR, ODR)..." class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 focus:bg-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-600" oninput="onRoadSearchInput()">
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Select Road (<span id="roadCountBadge">0</span> roads available)</label>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Select Road (<span id="roadCountBadge">0</span> roads: SH &gt; MDR &gt; ODR &gt; SCR by Length)</label>
         <select id="roadSelect" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600" onchange="renderCurrentTab()">
         </select>
       </div>
@@ -148,10 +154,15 @@
 
     <!-- ================= SECTION 1: ROAD CHART CONTAINER ================= -->
     <div id="sectionChartContainer" class="space-y-4">
-      <div class="flex justify-end gap-2">
+      <div class="flex flex-wrap justify-end gap-2">
+        <!-- BOOKLET GENERATION BUTTON -->
+        <button onclick="generateRoadChartBooklet()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+          Click to Booklet Road Chart (All Roads PDF)
+        </button>
         <button onclick="printSection('chartPrintArea', 'Road_Chart')" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-          Print Road Chart (PDF Only)
+          Print Current Road Chart (PDF)
         </button>
       </div>
 
@@ -265,17 +276,19 @@
 
   </div>
 
+  <!-- HIDDEN BOOKLET PRINT CONTAINER -->
+  <div id="bookletPrintContainer" class="hidden"></div>
+
   <!-- SCRIPT ENGINE -->
   <script>
     // ==========================================
     // 1. SUPABASE CLOUD CONFIGURATION
-    // (Project URL & Anon Key-ai keezhe paste seiyavum)
     // ==========================================
-    const SUPABASE_URL = "https://msdgmmfzqukhahfxemwp.supabase.co";       // e.g. "https://xxxx.supabase.co"
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zZGdtbWZ6cXVraGFoZnhlbXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjY5NTEsImV4cCI6MjEwODA0Mjk1MX0.dNLgMjpQqef-ZLq7SixU0HuYtiiF1Jv_3lMPOu8F9co";  // e.g. "eyJhbGciOi..."
+    const SUPABASE_URL = "https://msdgmmfzqukhahfxemwp.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zZGdtbWZ6cXVraGFoZnhlbXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk4NTg2MjQsImV4cCI6MjA1NTQzNDYyNH0.xxxx"; // (Intha idathil ungaloda Anon Key paste seiyavum)
     let supabaseClient = null;
 
-    if (typeof window.supabase !== "undefined" && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    if (typeof window.supabase !== "undefined" && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("xxxx")) {
       try {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       } catch (err) {
@@ -283,12 +296,9 @@
       }
     }
 
-    // PWA Service Worker for Mobile / APK Compatibility
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          .then(reg => console.log('SW Registered!', reg))
-          .catch(err => console.error('SW Error:', err));
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
       });
     }
 
@@ -306,149 +316,18 @@
       "trichy": "try@123", "lalgudi": "lgi@123", "manapparai": "mpa@123"
     };
 
-    const initialSampleRoads = [
-      {
-        "id": "rd_1",
-        "name": "Tiruchirappalli - Chidambaram Road",
-        "cat": "SH",
-        "subs": ["Lalgudi", "Thiruverumbur"],
-        "start": 0.0,
-        "end": 21.034,
-        "len": 21.034,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 17.212, "len": 17.212 },
-          { "sub": "Thiruverumbur", "sec": "Thiruverumbur-1", "start": 18.508, "end": 21.034, "len": 2.526 },
-          { "sub": "Thiruverumbur", "sec": "Thiruverumbur-2", "start": 0.0, "end": 0.0, "len": 5.915 }
-        ]
-      },
-      {
-        "id": "rd_2",
-        "name": "Poovalur - Siruganur - Thirupattur Road (MD 371)",
-        "cat": "MDR",
-        "subs": ["Lalgudi"],
-        "start": 0.0,
-        "end": 25.6,
-        "len": 25.6,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 7.0, "len": 7.0 },
-          { "sub": "Lalgudi", "sec": "Manachanallur", "start": 7.0, "end": 14.4, "len": 7.4 },
-          { "sub": "Lalgudi", "sec": "Manachanallur", "start": 14.4, "end": 25.6, "len": 11.2 }
-        ]
-      },
-      {
-        "id": "rd_3",
-        "name": "Pullambady - Sirugalapur - Padalur Road (MD.380)",
-        "cat": "MDR",
-        "subs": ["Lalgudi"],
-        "start": 0.0,
-        "end": 23.6,
-        "len": 23.6,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 6.0, "len": 6.0 },
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 6.0, "end": 12.0, "len": 6.0 },
-          { "sub": "Lalgudi", "sec": "Manachanallur", "start": 12.0, "end": 23.6, "len": 11.6 }
-        ]
-      },
-      {
-        "id": "rd_4",
-        "name": "Siruthaiyur - Sengaraiyur Road (Via) Anbil  (M 1125)",
-        "cat": "MDR",
-        "subs": ["Lalgudi", "Thiruverumbur"],
-        "start": 0.0,
-        "end": 13.6,
-        "len": 13.6,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 3.0, "len": 3.0 },
-          { "sub": "Thiruverumbur", "sec": "Thiruverumbur-2", "start": 3.0, "end": 13.6, "len": 10.6 }
-        ]
-      },
-      {
-        "id": "rd_5",
-        "name": "Mandapam -Pervalappur Road (via)Kumulur - Kannakudy  (MD 1126)",
-        "cat": "MDR",
-        "subs": ["Lalgudi"],
-        "start": 0.0,
-        "end": 10.6,
-        "len": 10.6,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 10.6, "len": 10.6 }
-        ]
-      },
-      {
-        "id": "rd_6",
-        "name": "Tiruchirapalli - Chithambaram Byepass Road (MD 460)",
-        "cat": "MDR",
-        "subs": ["Lalgudi"],
-        "start": 0.0,
-        "end": 1.8,
-        "len": 1.8,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 1.8, "len": 1.8 }
-        ]
-      },
-      {
-        "id": "rd_7",
-        "name": "Irungalur - Sengenthi Road",
-        "cat": "ODR",
-        "subs": ["Lalgudi", "Srirangam"],
-        "start": 0.0,
-        "end": 14.4,
-        "len": 14.4,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 8.0, "end": 14.4, "len": 6.4 },
-          { "sub": "Srirangam", "sec": "Srirangam-1", "start": 0.0, "end": 8.0, "len": 8.0 }
-        ]
-      },
-      {
-        "id": "rd_8",
-        "name": "Pullambady - vidthalaipuram Road (via) Vanthalai - Gudalur - Kanakiliyanallur",
-        "cat": "ODR",
-        "subs": ["Lalgudi"],
-        "start": 0.0,
-        "end": 9.8,
-        "len": 9.8,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 9.8, "len": 9.8 }
-        ]
-      },
-      {
-        "id": "rd_9",
-        "name": "Puthur-Uthamanur-Vellanur Road",
-        "cat": "ODR",
-        "subs": ["Lalgudi"],
-        "start": 5.8,
-        "end": 12.8,
-        "len": 7.0,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 5.8, "end": 12.8, "len": 7.0 }
-        ]
-      },
-      {
-        "id": "rd_10",
-        "name": "Pullampady-Karudamangalam Road",
-        "cat": "ODR",
-        "subs": ["Lalgudi"],
-        "start": 9.8,
-        "end": 16.2,
-        "len": 6.4,
-        "jurisdiction": [
-          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 9.8, "end": 16.2, "len": 6.4 }
-        ]
-      }
-    ];
-
+    // Clean initial store - NO DUMMY 10 ROADS!
     let masterRoads = [];
     const saved = localStorage.getItem("highways_master_roads");
     if (saved) {
-      try { masterRoads = JSON.parse(saved); } catch(e) { masterRoads = initialSampleRoads; }
-    } else {
-      masterRoads = initialSampleRoads;
+      try { masterRoads = JSON.parse(saved); } catch(e) { masterRoads = []; }
     }
 
-    let worksHistory = [
-      { roadId: "rd_3", from: 0.0, to: 2.0, scheme: "CRIDP", type: "Widening & Strengthening", year: "2025-26" },
-      { roadId: "rd_3", from: 5.0, to: 7.0, scheme: "Special Repairs (SR)", type: "Special Repairs", year: "2023-24" }
-    ];
+    let worksHistory = [];
+    const savedWorks = localStorage.getItem("highways_works_history");
+    if (savedWorks) {
+      try { worksHistory = JSON.parse(savedWorks); } catch(e) { worksHistory = []; }
+    }
 
     const typeColorMap = {
       "Widening & Strengthening": "bg-emerald-700 text-white",
@@ -508,7 +387,54 @@
       renderCurrentTab();
     }
 
-    function initDashboard() {
+    async function loadDataFromSupabase() {
+      const syncBadge = document.getElementById("syncBadge");
+      if (!supabaseClient) {
+        if (syncBadge) {
+          syncBadge.innerText = "Offline Cache Mode";
+          syncBadge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800";
+        }
+        return;
+      }
+
+      try {
+        if (syncBadge) syncBadge.innerText = "Syncing Cloud...";
+        
+        // 1. Fetch Master Roads
+        const { data: roadsData, error: roadsErr } = await supabaseClient.from("master_roads").select("*");
+        if (!roadsErr && roadsData && roadsData.length > 0) {
+          masterRoads = roadsData;
+          localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
+        }
+
+        // 2. Fetch Works History
+        const { data: worksData, error: worksErr } = await supabaseClient.from("road_works").select("*");
+        if (!worksErr && worksData && worksData.length > 0) {
+          worksHistory = worksData.map(w => ({
+            roadId: w.road_id,
+            from: parseFloat(w.from_km),
+            to: parseFloat(w.to_km),
+            scheme: w.scheme,
+            type: w.work_type,
+            year: w.financial_year
+          }));
+          localStorage.setItem("highways_works_history", JSON.stringify(worksHistory));
+        }
+
+        if (syncBadge) {
+          syncBadge.innerText = `Online Sync (${masterRoads.length} Roads)`;
+          syncBadge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800";
+        }
+      } catch (err) {
+        console.warn("Supabase fetch failed, using local cache:", err);
+        if (syncBadge) {
+          syncBadge.innerText = "Local Cache Mode";
+          syncBadge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700";
+        }
+      }
+    }
+
+    async function initDashboard() {
       document.getElementById("userBadge").innerText = currentUser.name;
       const subSelect = document.getElementById("subdivisionSelect");
       const adminPanel = document.getElementById("adminPanel");
@@ -541,15 +467,16 @@
         subSelect.innerHTML = `<option value="${currentUser.subdivision}">${currentUser.subdivision} Subdivision</option>`;
       }
 
+      await loadDataFromSupabase();
       onSubdivisionFilterChange();
     }
 
-    function handleExcelUpload(event) {
+    async function handleExcelUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -561,7 +488,7 @@
           if (!r || !r[4] || !r[11]) continue;
           let sub = String(r[4]).trim();
           let sec = String(r[5] || sub).trim();
-          let cat = String(r[9] || 'ODR').trim();
+          let cat = String(r[9] || 'ODR').trim().toUpperCase();
           let name = String(r[11]).trim();
           let start = parseFloat(r[12]) || 0;
           let end = parseFloat(r[13]) || 0;
@@ -581,7 +508,25 @@
         if (uploadedList.length > 0) {
           masterRoads = uploadedList;
           localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
-          alert(`Excel Upload Success! ${masterRoads.length} unique roads browser cache-il save aagiyulladhu.`);
+
+          // Sync to Supabase Cloud
+          if (supabaseClient) {
+            try {
+              document.getElementById("syncBadge").innerText = "Uploading to Cloud DB...";
+              // Delete existing roads and upsert
+              await supabaseClient.from("master_roads").delete().neq("id", "none");
+              // Chunk upload in batches of 50
+              for (let i = 0; i < uploadedList.length; i += 50) {
+                const chunk = uploadedList.slice(i, i + 50);
+                await supabaseClient.from("master_roads").upsert(chunk);
+              }
+              document.getElementById("syncBadge").innerText = `Cloud Synced (${uploadedList.length} Roads)`;
+            } catch (err) {
+              console.warn("Cloud DB upload error:", err);
+            }
+          }
+
+          alert(`Excel Upload Success! ${masterRoads.length} unique roads successfully compiled and saved for all users!`);
           onSubdivisionFilterChange();
         } else {
           alert("Excel file-il roads data kandupidikka mudiyavillai!");
@@ -590,10 +535,15 @@
       reader.readAsArrayBuffer(file);
     }
 
-    function clearAllRoads() {
+    async function clearAllRoads() {
       if (confirm("Unga division-il ulla roads data pooraava clear panna venduma?")) {
         localStorage.removeItem("highways_master_roads");
         masterRoads = [];
+        if (supabaseClient) {
+          try {
+            await supabaseClient.from("master_roads").delete().neq("id", "none");
+          } catch(e) {}
+        }
         onSubdivisionFilterChange();
         alert("Roads data clear aagivittadhu! Upload button click panni pudhiya Excel upload pannalaam.");
       }
@@ -607,6 +557,27 @@
       populateRoadDropdown();
     }
 
+    // CATEGORY RANKING & LENGTH DESCENDING HELPER
+    function getCategoryRank(cat) {
+      const c = (cat || "").toUpperCase().trim();
+      if (c === "SH") return 1;
+      if (c === "MDR") return 2;
+      if (c === "ODR") return 3;
+      if (c === "SCR") return 4;
+      return 5;
+    }
+
+    function getSortedRoads(list) {
+      return [...list].sort((a, b) => {
+        const rankA = getCategoryRank(a.cat);
+        const rankB = getCategoryRank(b.cat);
+        if (rankA !== rankB) {
+          return rankA - rankB; // SH -> MDR -> ODR -> SCR
+        }
+        return b.len - a.len; // Highest Length to Lowest Length
+      });
+    }
+
     function populateRoadDropdown() {
       const selectedSub = document.getElementById("subdivisionSelect").value;
       const searchTerm = document.getElementById("roadSearchInput").value.trim().toLowerCase();
@@ -618,15 +589,18 @@
         list = list.filter(r => r.subs.includes(selectedSub));
       }
       if (searchTerm) {
-        list = list.filter(r => r.name.toLowerCase().includes(searchTerm) || r.cat.toLowerCase().includes(searchTerm));
+        list = list.filter(r => r.name.toLowerCase().includes(searchTerm) || (r.cat && r.cat.toLowerCase().includes(searchTerm)));
       }
+
+      // Sort category-wise (SH > MDR > ODR > SCR) and Length descending
+      list = getSortedRoads(list);
 
       document.getElementById("roadCountBadge").innerText = list.length;
 
       if (list.length === 0) {
         const opt = document.createElement("option");
         opt.value = "";
-        opt.innerText = "No matching roads found";
+        opt.innerText = "No matching roads found (Super Admin can upload Excel)";
         roadSelect.appendChild(opt);
         renderCurrentTab();
         return;
@@ -635,7 +609,7 @@
       list.forEach(r => {
         const opt = document.createElement("option");
         opt.value = r.id;
-        opt.innerText = `[${r.cat}] ${r.name} (Total Km ${r.start.toFixed(1)} - ${r.end.toFixed(1)})`;
+        opt.innerText = `[${r.cat}] ${r.name} - Length: ${r.len.toFixed(3)} Km (Km ${r.start.toFixed(1)} to ${r.end.toFixed(1)})`;
         roadSelect.appendChild(opt);
       });
 
@@ -695,8 +669,8 @@
       remarkJuris.innerHTML = "";
 
       if (!roadObj) {
-        if(titleChart) titleChart.innerText = "No Road Selected";
-        if(titleElig) titleElig.innerText = "No Road Selected";
+        if(titleChart) titleChart.innerText = "No Road Selected (Please upload roads Excel)";
+        if(titleElig) titleElig.innerText = "No Road Selected (Please upload roads Excel)";
         return;
       }
 
@@ -721,6 +695,7 @@
       const roadWorks = worksHistory.filter(w => w.roadId === roadObj.id);
       const years = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"];
 
+      // 1. Render Visual Grid (Section 1) - 200m Furlong Split: 0/0 - 0/2...
       const stepKm = 0.2;
       for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
         let bStart = km;
@@ -742,6 +717,7 @@
         tbodyChart.appendChild(tr);
       }
 
+      // 2. DLP & Stretches Consolidation
       let stretchBlocks = [];
       for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
         let bStart = km;
@@ -769,9 +745,7 @@
       stretchBlocks.forEach(blk => {
         if (consolidated.length === 0) {
           consolidated.push({
-            start: blk.start,
-            end: blk.end,
-            isEligible: blk.isEligible,
+            start: blk.start, end: blk.end, isEligible: blk.isEligible,
             work: blk.activeDlpWork || blk.latestWork
           });
         } else {
@@ -781,9 +755,7 @@
             last.end = blk.end;
           } else {
             consolidated.push({
-              start: blk.start,
-              end: blk.end,
-              isEligible: blk.isEligible,
+              start: blk.start, end: blk.end, isEligible: blk.isEligible,
               work: blk.activeDlpWork || blk.latestWork
             });
           }
@@ -832,6 +804,7 @@
       document.getElementById("totalEligibleBadge").innerText = `Total Eligible Length: ${totalEligibleKm.toFixed(3)} Km`;
       document.getElementById("totalDlpBadge").innerText = `Under DLP Length: ${totalDlpKm.toFixed(3)} Km`;
 
+      // 3. Remarks Top Badges
       let eligText = eligibleStrings.length > 0 ? eligibleStrings.join(", ") : "Nil";
       let dlpText = dlpStrings.length > 0 ? dlpStrings.join(", ") : "Nil";
 
@@ -866,6 +839,120 @@
       remarkJuris.innerHTML = jurisHtml;
     }
 
+    // MULTI-PAGE ROAD CHART BOOKLET GENERATION (SH > MDR > ODR > SCR, Length Descending with Page Numbers)
+    function generateRoadChartBooklet() {
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      let list = masterRoads;
+      if (selectedSub !== "ALL") {
+        list = list.filter(r => r.subs.includes(selectedSub));
+      }
+      list = getSortedRoads(list);
+
+      if (list.length === 0) {
+        alert("Booklet create panna roads data ethuvum illai!");
+        return;
+      }
+
+      if (!confirm(`Total ${list.length} roads-kkana Booklet PDF generate seiyyava? Idharku sila nodigal aagalam.`)) {
+        return;
+      }
+
+      const years = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"];
+      const stepKm = 0.2;
+      const totalPages = list.length;
+      let bookletHtml = `<div class="p-2 space-y-6">`;
+
+      list.forEach((road, index) => {
+        const pageNum = index + 1;
+        let chartStart = road.start;
+        let chartEnd = road.end;
+
+        if (currentUser.role === "subdivision") {
+          const subJuris = road.jurisdiction.filter(j => j.sub === currentUser.subdivision);
+          if (subJuris.length > 0) {
+            chartStart = Math.min(...subJuris.map(j => j.start));
+            chartEnd = Math.max(...subJuris.map(j => j.end));
+          }
+        }
+
+        const roadWorks = worksHistory.filter(w => w.roadId === road.id);
+
+        bookletHtml += `
+          <div class="page-break bg-white p-6 rounded-lg border border-slate-300 min-h-[900px] flex flex-col justify-between mb-8">
+            <div>
+              <div class="text-center border-b pb-3 mb-3">
+                <h2 class="text-sm font-black uppercase tracking-wider text-slate-900">Highways Department, Tamil Nadu</h2>
+                <h3 class="text-[11px] font-bold text-slate-600 uppercase">Construction & Maintenance, Tiruchirappalli Division</h3>
+                <div class="mt-1 text-xs font-black text-blue-900 bg-blue-50 py-1 px-3 rounded-full inline-block border border-blue-200">
+                  [${road.cat}] ${road.name} | Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} (Length: ${road.len.toFixed(3)} Km)
+                </div>
+              </div>
+
+              <div class="flex justify-between items-center text-[10px] font-bold text-slate-600 mb-2">
+                <span>Category: <strong class="text-blue-800">${road.cat}</strong></span>
+                <span>Subdivisions: ${road.subs.join(", ")}</span>
+                <span>Interval: 200m (Furlong) Grid</span>
+              </div>
+
+              <table class="w-full text-[10px] border-collapse border border-slate-400 text-center mb-4">
+                <thead>
+                  <tr class="bg-slate-100 text-slate-800 font-bold uppercase text-[10px]">
+                    <th class="border border-slate-400 p-1 w-28">Chainage</th>
+                    ${years.map(yr => `<th class="border border-slate-400 p-1">${yr}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+        `;
+
+        for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
+          let bStart = km;
+          let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
+          let label = `${formatFurlong(bStart)} - ${formatFurlong(bEnd)}`;
+
+          bookletHtml += `<tr><td class="border border-slate-400 p-0.5 font-bold bg-slate-50 text-[10px]">${label}</td>`;
+          years.forEach(yr => {
+            let matched = roadWorks.find(w => w.year === yr && bStart >= w.from && bEnd <= w.to);
+            if (matched) {
+              bookletHtml += `<td class="border border-slate-400 p-0.5 font-bold ${typeColorMap[matched.type]} text-[9px]">${matched.scheme}</td>`;
+            } else {
+              bookletHtml += `<td class="border border-slate-400 p-0.5 text-slate-300 font-medium">—</td>`;
+            }
+          });
+          bookletHtml += `</tr>`;
+        }
+
+        bookletHtml += `
+                </tbody>
+              </table>
+
+              <div class="text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
+                <span class="font-bold text-slate-800">Section Jurisdiction: </span>
+                ${road.jurisdiction.map(j => `<span>${j.sub} (${j.sec}): Km ${j.start.toFixed(1)}-${j.end.toFixed(1)} (${j.len.toFixed(1)} Km); </span>`).join('')}
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center text-[10px] text-slate-500 pt-3 border-t mt-4">
+              <span>Highways C&M Tiruchirappalli Division Road Chart Booklet</span>
+              <span class="font-bold text-slate-800">Page ${pageNum} of ${totalPages}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      bookletHtml += `</div>`;
+
+      const printContainer = document.getElementById("bookletPrintContainer");
+      printContainer.innerHTML = bookletHtml;
+
+      html2pdf().from(printContainer).set({
+        margin: [5, 5, 5, 5],
+        filename: `Trichy_Highways_Road_Chart_Booklet_${selectedSub}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 1.5 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      }).save();
+    }
+
     function exportEligibleToExcel() {
       const table = document.getElementById("eligibleExportTable");
       const wb = XLSX.utils.table_to_book(table, { sheet: "Eligible_Stretches" });
@@ -888,7 +975,7 @@
       }).save();
     }
 
-    function addCustomWorkEntry() {
+    async function addCustomWorkEntry() {
       const roadId = document.getElementById("roadSelect").value;
       const fromKm = parseFloat(document.getElementById("fromKm").value);
       const toKm = parseFloat(document.getElementById("toKm").value);
@@ -907,7 +994,25 @@
         return;
       }
 
-      worksHistory.push({ roadId, from: fromKm, to: toKm, scheme, type: workType, year });
+      const newEntry = { roadId, from: fromKm, to: toKm, scheme, type: workType, year };
+      worksHistory.push(newEntry);
+      localStorage.setItem("highways_works_history", JSON.stringify(worksHistory));
+
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from("road_works").insert([{
+            road_id: roadId,
+            from_km: fromKm,
+            to_km: toKm,
+            scheme: scheme,
+            work_type: workType,
+            financial_year: year
+          }]);
+        } catch(e) {
+          console.warn("Cloud save error:", e);
+        }
+      }
+
       renderCurrentTab();
       alert(`Work entry vetrigaramaaga save aagivittadhu! Scheme: ${scheme}, DLP period auto-calculated.`);
 
