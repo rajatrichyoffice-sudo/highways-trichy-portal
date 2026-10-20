@@ -17,7 +17,41 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     @media print {
-      .page-break { page-break-after: always; break-after: page; }
+      @page {
+        size: A4 portrait;
+        margin: 10mm 8mm 12mm 8mm;
+      }
+      body * {
+        visibility: hidden;
+      }
+      #bookletPrintArea, #bookletPrintArea * {
+        visibility: visible;
+      }
+      #bookletPrintArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+      }
+      .road-booklet-page {
+        page-break-before: always;
+        break-before: page;
+        page-break-inside: auto;
+      }
+      .road-booklet-page:first-child {
+        page-break-before: avoid;
+        break-before: avoid;
+      }
+      thead {
+        display: table-header-group;
+      }
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
     }
   </style>
 </head>
@@ -92,18 +126,24 @@
     </div>
 
     <!-- Navigation & Filters Bar -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-3">
       <div>
         <label class="block text-xs font-bold text-slate-700 uppercase mb-1">1. Subdivision Filter</label>
         <select id="subdivisionSelect" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600" onchange="onSubdivisionFilterChange()">
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">2. Search Road Name / Category</label>
-        <input type="text" id="roadSearchInput" placeholder="Type Road name (e.g. SH, MDR, ODR)..." class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 focus:bg-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-600" oninput="onRoadSearchInput()">
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">2. Section Filter</label>
+        <select id="sectionSelect" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600" onchange="onSectionFilterChange()">
+          <option value="ALL">All Sections (Entire Jurisdiction)</option>
+        </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Select Road (<span id="roadCountBadge">0</span> roads: SH &gt; MDR &gt; ODR &gt; SCR by Length)</label>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Search Road / Category</label>
+        <input type="text" id="roadSearchInput" placeholder="Type Road name (SH, MDR...)" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 focus:bg-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-600" oninput="onRoadSearchInput()">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">4. Select Road (<span id="roadCountBadge">0</span> roads: SH &gt; MDR &gt; ODR &gt; SCR by Length)</label>
         <select id="roadSelect" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600" onchange="renderCurrentTab()">
         </select>
       </div>
@@ -154,16 +194,26 @@
 
     <!-- ================= SECTION 1: ROAD CHART CONTAINER ================= -->
     <div id="sectionChartContainer" class="space-y-4">
-      <div class="flex flex-wrap justify-end gap-2">
-        <!-- BOOKLET GENERATION BUTTON -->
-        <button onclick="generateRoadChartBooklet()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-          Click to Booklet Road Chart (All Roads PDF)
-        </button>
-        <button onclick="printSection('chartPrintArea', 'Road_Chart')" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-          Print Current Road Chart (PDF)
-        </button>
+      <div class="flex flex-wrap justify-between items-center gap-2 bg-white p-3 rounded-xl border border-slate-200">
+        <div class="text-xs font-bold text-slate-700 flex items-center gap-2">
+          <span>Current Scope:</span>
+          <span id="chartScopeBadge" class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-lg font-black">Division Level</span>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <!-- ONE-CLICK BOOKLET PRINT OR SAVE AS PDF (A4 PORTRAIT) -->
+          <button onclick="triggerBookletPrint('print')" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Print / Save as PDF (All Roads A4 Portrait)
+          </button>
+          <button onclick="triggerBookletPrint('download')" class="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Download PDF File (A4 Portrait)
+          </button>
+          <button onclick="printSection('chartPrintArea', 'Single_Road_Chart')" class="bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Print Selected Road
+          </button>
+        </div>
       </div>
 
       <div id="chartPrintArea" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -276,8 +326,8 @@
 
   </div>
 
-  <!-- HIDDEN BOOKLET PRINT CONTAINER -->
-  <div id="bookletPrintContainer" class="hidden"></div>
+  <!-- HIDDEN PRINT AREA FOR A4 PORTRAIT BOOKLET (ALL ROADS) -->
+  <div id="bookletPrintArea" class="hidden"></div>
 
   <!-- SCRIPT ENGINE -->
   <script>
@@ -285,7 +335,7 @@
     // 1. SUPABASE CLOUD CONFIGURATION
     // ==========================================
     const SUPABASE_URL = "https://msdgmmfzqukhahfxemwp.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zZGdtbWZ6cXVraGFoZnhlbXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjY5NTEsImV4cCI6MjEwODA0Mjk1MX0.dNLgMjpQqef-ZLq7SixU0HuYtiiF1Jv_3lMPOu8F9co"; // (Intha idathil ungaloda Anon Key paste seiyavum)
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zZGdtbWZ6cXVraGFoZnhlbXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjY5NTEsImV4cCI6MjEwODA0Mjk1MX0.dNLgMjpQqef-ZLq7SixU0HuYtiiF1Jv_3lMPOu8F9co"; 
     let supabaseClient = null;
 
     if (typeof window.supabase !== "undefined" && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("xxxx")) {
@@ -316,7 +366,6 @@
       "trichy": "try@123", "lalgudi": "lgi@123", "manapparai": "mpa@123"
     };
 
-    // Clean initial store - NO DUMMY 10 ROADS!
     let masterRoads = [];
     const saved = localStorage.getItem("highways_master_roads");
     if (saved) {
@@ -400,14 +449,12 @@
       try {
         if (syncBadge) syncBadge.innerText = "Syncing Cloud...";
         
-        // 1. Fetch Master Roads
         const { data: roadsData, error: roadsErr } = await supabaseClient.from("master_roads").select("*");
         if (!roadsErr && roadsData && roadsData.length > 0) {
           masterRoads = roadsData;
           localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
         }
 
-        // 2. Fetch Works History
         const { data: worksData, error: worksErr } = await supabaseClient.from("road_works").select("*");
         if (!worksErr && worksData && worksData.length > 0) {
           worksHistory = worksData.map(w => ({
@@ -509,13 +556,10 @@
           masterRoads = uploadedList;
           localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
 
-          // Sync to Supabase Cloud
           if (supabaseClient) {
             try {
               document.getElementById("syncBadge").innerText = "Uploading to Cloud DB...";
-              // Delete existing roads and upsert
               await supabaseClient.from("master_roads").delete().neq("id", "none");
-              // Chunk upload in batches of 50
               for (let i = 0; i < uploadedList.length; i += 50) {
                 const chunk = uploadedList.slice(i, i + 50);
                 await supabaseClient.from("master_roads").upsert(chunk);
@@ -550,6 +594,11 @@
     }
 
     function onSubdivisionFilterChange() {
+      populateSectionDropdown();
+      populateRoadDropdown();
+    }
+
+    function onSectionFilterChange() {
       populateRoadDropdown();
     }
 
@@ -557,7 +606,30 @@
       populateRoadDropdown();
     }
 
-    // CATEGORY RANKING & LENGTH DESCENDING HELPER
+    function populateSectionDropdown() {
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      const sectionSelect = document.getElementById("sectionSelect");
+      sectionSelect.innerHTML = `<option value="ALL">All Sections (Entire Jurisdiction)</option>`;
+
+      let sections = new Set();
+      masterRoads.forEach(road => {
+        if (road.jurisdiction) {
+          road.jurisdiction.forEach(j => {
+            if (selectedSub === "ALL" || j.sub === selectedSub) {
+              if (j.sec) sections.add(j.sec);
+            }
+          });
+        }
+      });
+
+      Array.from(sections).sort().forEach(sec => {
+        const opt = document.createElement("option");
+        opt.value = sec;
+        opt.innerText = `${sec} Section`;
+        sectionSelect.appendChild(opt);
+      });
+    }
+
     function getCategoryRank(cat) {
       const c = (cat || "").toUpperCase().trim();
       if (c === "SH") return 1;
@@ -578,24 +650,47 @@
       });
     }
 
-    function populateRoadDropdown() {
+    function getFilteredRoadsList() {
       const selectedSub = document.getElementById("subdivisionSelect").value;
+      const selectedSec = document.getElementById("sectionSelect") ? document.getElementById("sectionSelect").value : "ALL";
       const searchTerm = document.getElementById("roadSearchInput").value.trim().toLowerCase();
-      const roadSelect = document.getElementById("roadSelect");
-      roadSelect.innerHTML = "";
 
       let list = masterRoads;
       if (selectedSub !== "ALL") {
         list = list.filter(r => r.subs.includes(selectedSub));
       }
+      if (selectedSec !== "ALL") {
+        list = list.filter(r => r.jurisdiction && r.jurisdiction.some(j => j.sec === selectedSec));
+      }
       if (searchTerm) {
         list = list.filter(r => r.name.toLowerCase().includes(searchTerm) || (r.cat && r.cat.toLowerCase().includes(searchTerm)));
       }
 
-      // Sort category-wise (SH > MDR > ODR > SCR) and Length descending
-      list = getSortedRoads(list);
+      return getSortedRoads(list);
+    }
 
+    function populateRoadDropdown() {
+      const roadSelect = document.getElementById("roadSelect");
+      roadSelect.innerHTML = "";
+
+      const list = getFilteredRoadsList();
       document.getElementById("roadCountBadge").innerText = list.length;
+
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      const selectedSec = document.getElementById("sectionSelect") ? document.getElementById("sectionSelect").value : "ALL";
+      const scopeBadge = document.getElementById("chartScopeBadge");
+      if (scopeBadge) {
+        if (selectedSec !== "ALL") {
+          scopeBadge.innerText = `${selectedSec} Section Limit`;
+          scopeBadge.className = "bg-purple-100 text-purple-800 px-2.5 py-1 rounded-lg font-black";
+        } else if (selectedSub !== "ALL") {
+          scopeBadge.innerText = `${selectedSub} Subdivision Limit`;
+          scopeBadge.className = "bg-blue-100 text-blue-800 px-2.5 py-1 rounded-lg font-black";
+        } else {
+          scopeBadge.innerText = "Division Level (All Roads)";
+          scopeBadge.className = "bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg font-black";
+        }
+      }
 
       if (list.length === 0) {
         const opt = document.createElement("option");
@@ -653,6 +748,34 @@
       return { underDlp, dlpYears, executionYear, dlpExpiryYear };
     }
 
+    function getRoadLimitsForUser(roadObj) {
+      let chartStart = roadObj.start;
+      let chartEnd = roadObj.end;
+      let viewLabel = "Division Level (Full Stretch)";
+
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      const selectedSec = document.getElementById("sectionSelect") ? document.getElementById("sectionSelect").value : "ALL";
+
+      if (selectedSec !== "ALL") {
+        const secJuris = roadObj.jurisdiction.filter(j => j.sec === selectedSec);
+        if (secJuris.length > 0) {
+          chartStart = Math.min(...secJuris.map(j => j.start));
+          chartEnd = Math.max(...secJuris.map(j => j.end));
+          viewLabel = `${selectedSec} Section Limit`;
+        }
+      } else if (currentUser.role === "subdivision" || selectedSub !== "ALL") {
+        const targetSub = (currentUser.role === "subdivision") ? currentUser.subdivision : selectedSub;
+        const subJuris = roadObj.jurisdiction.filter(j => j.sub === targetSub);
+        if (subJuris.length > 0) {
+          chartStart = Math.min(...subJuris.map(j => j.start));
+          chartEnd = Math.max(...subJuris.map(j => j.end));
+          viewLabel = `${targetSub} Subdivision Limit`;
+        }
+      }
+
+      return { chartStart, chartEnd, viewLabel };
+    }
+
     function renderCurrentTab() {
       const roadId = document.getElementById("roadSelect").value;
       const roadObj = masterRoads.find(r => r.id === roadId);
@@ -674,20 +797,8 @@
         return;
       }
 
-      let chartStart = roadObj.start;
-      let chartEnd = roadObj.end;
-      let viewLabel = "Division Level (Full Stretch)";
-
-      if (currentUser.role === "subdivision") {
-        const subJuris = roadObj.jurisdiction.filter(j => j.sub === currentUser.subdivision);
-        if (subJuris.length > 0) {
-          chartStart = Math.min(...subJuris.map(j => j.start));
-          chartEnd = Math.max(...subJuris.map(j => j.end));
-          viewLabel = `${currentUser.subdivision} Subdivision Limit`;
-        }
-      }
-
-      const currentTotalLen = (chartEnd - chartStart);
+      const { chartStart, chartEnd, viewLabel } = getRoadLimitsForUser(roadObj);
+      const currentTotalLen = Math.round((chartEnd - chartStart) * 1000) / 1000;
       const titleText = `[${roadObj.cat}] ${roadObj.name} | View: ${viewLabel} | Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} (Length: ${currentTotalLen.toFixed(3)} Km)`;
       titleChart.innerText = titleText;
       titleElig.innerText = titleText;
@@ -839,66 +950,52 @@
       remarkJuris.innerHTML = jurisHtml;
     }
 
-    // MULTI-PAGE ROAD CHART BOOKLET GENERATION (SH > MDR > ODR > SCR, Length Descending with Page Numbers)
-    function generateRoadChartBooklet() {
+    // MULTI-PAGE ROAD CHART BOOKLET BUILDER (ALL ROADS IN VIEW, SORTED SH > MDR > ODR > SCR, 200M FURLONG, PAGE NUMBERS)
+    function buildBookletHtml(list) {
       const selectedSub = document.getElementById("subdivisionSelect").value;
-      let list = masterRoads;
-      if (selectedSub !== "ALL") {
-        list = list.filter(r => r.subs.includes(selectedSub));
-      }
-      list = getSortedRoads(list);
-
-      if (list.length === 0) {
-        alert("Booklet create panna roads data ethuvum illai!");
-        return;
-      }
-
-      if (!confirm(`Total ${list.length} roads-kkana Booklet PDF generate seiyyava? Idharku sila nodigal aagalam.`)) {
-        return;
-      }
-
+      const selectedSec = document.getElementById("sectionSelect") ? document.getElementById("sectionSelect").value : "ALL";
       const years = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"];
       const stepKm = 0.2;
       const totalPages = list.length;
-      let bookletHtml = `<div class="p-2 space-y-6">`;
+
+      let scopeLabel = "Tiruchirappalli Division (Full Master)";
+      if (selectedSec !== "ALL") scopeLabel = `${selectedSec} Section Limits`;
+      else if (selectedSub !== "ALL") scopeLabel = `${selectedSub} Subdivision Limits`;
+
+      let html = `<div style="font-family: sans-serif; color: #1e293b; background: white;">`;
 
       list.forEach((road, index) => {
         const pageNum = index + 1;
-        let chartStart = road.start;
-        let chartEnd = road.end;
-
-        if (currentUser.role === "subdivision") {
-          const subJuris = road.jurisdiction.filter(j => j.sub === currentUser.subdivision);
-          if (subJuris.length > 0) {
-            chartStart = Math.min(...subJuris.map(j => j.start));
-            chartEnd = Math.max(...subJuris.map(j => j.end));
-          }
-        }
-
+        const { chartStart, chartEnd, viewLabel } = getRoadLimitsForUser(road);
+        const currentTotalLen = Math.round((chartEnd - chartStart) * 1000) / 1000;
         const roadWorks = worksHistory.filter(w => w.roadId === road.id);
 
-        bookletHtml += `
-          <div class="page-break bg-white p-6 rounded-lg border border-slate-300 min-h-[900px] flex flex-col justify-between mb-8">
+        html += `
+          <div class="road-booklet-page" style="box-sizing: border-box; padding: 12px 10px; min-height: 1040px; display: flex; flex-direction: column; justify-content: space-between; border-bottom: 2px dashed #cbd5e1;">
             <div>
-              <div class="text-center border-b pb-3 mb-3">
-                <h2 class="text-sm font-black uppercase tracking-wider text-slate-900">Highways Department, Tamil Nadu</h2>
-                <h3 class="text-[11px] font-bold text-slate-600 uppercase">Construction & Maintenance, Tiruchirappalli Division</h3>
-                <div class="mt-1 text-xs font-black text-blue-900 bg-blue-50 py-1 px-3 rounded-full inline-block border border-blue-200">
-                  [${road.cat}] ${road.name} | Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} (Length: ${road.len.toFixed(3)} Km)
+              <!-- Header -->
+              <div style="text-align: center; border-bottom: 2px solid #1e40af; padding-bottom: 8px; margin-bottom: 10px;">
+                <h1 style="font-size: 13px; font-weight: 900; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px;">HIGHWAYS DEPARTMENT, TAMIL NADU</h1>
+                <h2 style="font-size: 11px; font-weight: 700; color: #475569; margin: 2px 0 0 0; text-transform: uppercase;">Construction & Maintenance, Tiruchirappalli Division</h2>
+                <div style="display: inline-block; background: #eff6ff; color: #1e3a8a; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 5px;">
+                  [${road.cat}] ${road.name} &nbsp;|&nbsp; Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} &nbsp;|&nbsp; Length: ${currentTotalLen.toFixed(3)} Km
                 </div>
               </div>
 
-              <div class="flex justify-between items-center text-[10px] font-bold text-slate-600 mb-2">
-                <span>Category: <strong class="text-blue-800">${road.cat}</strong></span>
-                <span>Subdivisions: ${road.subs.join(", ")}</span>
-                <span>Interval: 200m (Furlong) Grid</span>
+              <!-- Metadata Info Strip -->
+              <div style="display: flex; justify-content: space-between; font-size: 9.5px; font-weight: 700; color: #334155; margin-bottom: 8px; background: #f8fafc; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                <span>Category: <strong style="color: #1d4ed8;">${road.cat}</strong></span>
+                <span>Subdivision: ${road.subs.join(', ')}</span>
+                <span>Scope: ${viewLabel}</span>
+                <span>Granularity: 200m (Furlong)</span>
               </div>
 
-              <table class="w-full text-[10px] border-collapse border border-slate-400 text-center mb-4">
+              <!-- Visual Road Chart Table -->
+              <table style="width: 100%; border-collapse: collapse; font-size: 9px; text-align: center; border: 1px solid #94a3b8; margin-bottom: 8px;">
                 <thead>
-                  <tr class="bg-slate-100 text-slate-800 font-bold uppercase text-[10px]">
-                    <th class="border border-slate-400 p-1 w-28">Chainage</th>
-                    ${years.map(yr => `<th class="border border-slate-400 p-1">${yr}</th>`).join('')}
+                  <tr style="background: #e2e8f0; color: #0f172a; font-weight: 800; text-transform: uppercase;">
+                    <th style="border: 1px solid #94a3b8; padding: 4px 2px; width: 85px;">Chainage</th>
+                    ${years.map(yr => `<th style="border: 1px solid #94a3b8; padding: 4px 2px;">${yr}</th>`).join('')}
                   </tr>
                 </thead>
                 <tbody>
@@ -909,48 +1006,85 @@
           let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
           let label = `${formatFurlong(bStart)} - ${formatFurlong(bEnd)}`;
 
-          bookletHtml += `<tr><td class="border border-slate-400 p-0.5 font-bold bg-slate-50 text-[10px]">${label}</td>`;
+          html += `<tr><td style="border: 1px solid #94a3b8; padding: 2.5px 2px; font-weight: 800; background: #f8fafc; color: #1e293b;">${label}</td>`;
           years.forEach(yr => {
             let matched = roadWorks.find(w => w.year === yr && bStart >= w.from && bEnd <= w.to);
             if (matched) {
-              bookletHtml += `<td class="border border-slate-400 p-0.5 font-bold ${typeColorMap[matched.type]} text-[9px]">${matched.scheme}</td>`;
+              let colorBg = "#047857";
+              if (matched.type.includes("Widening") && !matched.type.includes("Strengthening")) colorBg = "#0891b2";
+              else if (matched.type.includes("Strengthening")) colorBg = "#d97706";
+              else if (matched.type.includes("IRQP")) colorBg = "#9333ea";
+              else if (matched.type.includes("Special Repairs")) colorBg = "#ea580c";
+              else if (matched.type.includes("Periodical Renewal")) colorBg = "#3b82f6";
+
+              html += `<td style="border: 1px solid #94a3b8; padding: 2.5px 2px; font-weight: 800; background: ${colorBg}; color: white; font-size: 8px;">${matched.scheme}</td>`;
             } else {
-              bookletHtml += `<td class="border border-slate-400 p-0.5 text-slate-300 font-medium">—</td>`;
+              html += `<td style="border: 1px solid #94a3b8; padding: 2.5px 2px; color: #cbd5e1; font-weight: 600;">—</td>`;
             }
           });
-          bookletHtml += `</tr>`;
+          html += `</tr>`;
         }
 
-        bookletHtml += `
+        html += `
                 </tbody>
               </table>
 
-              <div class="text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
-                <span class="font-bold text-slate-800">Section Jurisdiction: </span>
-                ${road.jurisdiction.map(j => `<span>${j.sub} (${j.sec}): Km ${j.start.toFixed(1)}-${j.end.toFixed(1)} (${j.len.toFixed(1)} Km); </span>`).join('')}
+              <!-- Section Jurisdiction Distribution Box -->
+              <div style="font-size: 8.5px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; margin-top: 4px;">
+                <span style="font-weight: 800; color: #0f172a;">Section Distribution: </span>
+                ${road.jurisdiction ? road.jurisdiction.map(j => `<span style="margin-right: 8px;"><strong>${j.sub} (${j.sec}):</strong> Km ${j.start.toFixed(1)} to ${j.end.toFixed(1)} (${j.len.toFixed(1)} Km)</span>`).join('') : ''}
               </div>
             </div>
 
-            <div class="flex justify-between items-center text-[10px] text-slate-500 pt-3 border-t mt-4">
-              <span>Highways C&M Tiruchirappalli Division Road Chart Booklet</span>
-              <span class="font-bold text-slate-800">Page ${pageNum} of ${totalPages}</span>
+            <!-- Page Footer with Official Signatures & Pagination -->
+            <div style="border-top: 1px solid #94a3b8; padding-top: 6px; margin-top: 8px; font-size: 8.5px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
+              <span>Highways Department Trichy (C&M) - ${scopeLabel}</span>
+              <span style="font-weight: 700;">Section Officer (H) &nbsp;&nbsp;|&nbsp;&nbsp; ADE (H) &nbsp;&nbsp;|&nbsp;&nbsp; Divisional Engineer (H)</span>
+              <span style="font-weight: 900; color: #0f172a; background: #e2e8f0; padding: 2px 8px; border-radius: 4px;">Page ${pageNum} of ${totalPages}</span>
             </div>
           </div>
         `;
       });
 
-      bookletHtml += `</div>`;
+      html += `</div>`;
+      return html;
+    }
 
-      const printContainer = document.getElementById("bookletPrintContainer");
-      printContainer.innerHTML = bookletHtml;
+    // TRIGGER BOOKLET PRINT OR DOWNLOAD (A4 PORTRAIT)
+    function triggerBookletPrint(mode) {
+      const list = getFilteredRoadsList();
 
-      html2pdf().from(printContainer).set({
-        margin: [5, 5, 5, 5],
-        filename: `Trichy_Highways_Road_Chart_Booklet_${selectedSub}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 1.5 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-      }).save();
+      if (list.length === 0) {
+        alert("Print/Download seiya roads data ethuvum illai! Please Excel upload seiyavum.");
+        return;
+      }
+
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      const selectedSec = document.getElementById("sectionSelect") ? document.getElementById("sectionSelect").value : "ALL";
+      let filterName = "All_Division";
+      if (selectedSec !== "ALL") filterName = `Section_${selectedSec}`;
+      else if (selectedSub !== "ALL") filterName = `Subdivision_${selectedSub}`;
+
+      const printArea = document.getElementById("bookletPrintArea");
+      printArea.innerHTML = buildBookletHtml(list);
+      printArea.classList.remove("hidden");
+
+      if (mode === "print") {
+        window.print();
+        setTimeout(() => {
+          printArea.classList.add("hidden");
+        }, 1000);
+      } else {
+        html2pdf().from(printArea).set({
+          margin: [8, 6, 8, 6],
+          filename: `Trichy_Road_Chart_Booklet_${filterName}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 1.5, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).save().then(() => {
+          printArea.classList.add("hidden");
+        });
+      }
     }
 
     function exportEligibleToExcel() {
