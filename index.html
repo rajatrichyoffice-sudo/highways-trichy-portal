@@ -1058,10 +1058,37 @@ async function handleExcelUpload(event) {
         let chainageLabel = `${formatFurlong(bStart)} - ${formatFurlong(bEnd)}`;
         let tdHtml = `<td class="border border-slate-400 p-1 font-bold bg-slate-50 text-slate-700 whitespace-nowrap text-[11px]">${chainageLabel}</td>`;
 
+const typeHexMap = {
+          "Widening & Strengthening": "#047857",
+          "Widening": "#0891b2",
+          "Strengthening": "#f59e0b",
+          "IRQP": "#9333ea",
+          "Special Repairs": "#ea580c",
+          "Periodical Renewal": "#3b82f6"
+        };
+
         years.forEach(yr => {
-          let matched = roadWorks.find(w => w.year === yr && bStart >= w.from && bEnd <= w.to);
+          // 200m furlong block-il ethavathu overlap irukkaa endru check seithal
+          let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, w.from) < Math.min(bEnd, w.to));
           if (matched) {
-            tdHtml += `<td class="border border-slate-400 p-1.5 font-bold ${typeColorMap[matched.type]} text-[11px]">${matched.scheme} (${matched.type})</td>`;
+            let oStart = Math.max(bStart, w.from);
+            let oEnd = Math.min(bEnd, w.to);
+            let pStart = Math.round(((oStart - bStart) / (bEnd - bStart)) * 100);
+            let pEnd = Math.round(((oEnd - bStart) / (bEnd - bStart)) * 100);
+            let hex = typeHexMap[matched.type] || '#3b82f6';
+
+            let cellStyle = '';
+            let isPartial = !(pStart === 0 && pEnd === 100);
+
+            if (!isPartial) {
+              cellStyle = `background-color: ${hex}; color: white;`;
+            } else {
+              // Exact CSS linear-gradient: Paathi color mattum render aagum
+              cellStyle = `background: linear-gradient(to right, #ffffff 0%, #ffffff ${pStart}%, ${hex} ${pStart}%, ${hex} ${pEnd}%, #ffffff ${pEnd}%, #ffffff 100%); color: ${pEnd - pStart >= 50 ? 'white' : '#0f172a'}; text-shadow: ${pEnd - pStart >= 50 ? '0 1px 2px rgba(0,0,0,0.6)' : 'none'};`;
+            }
+
+            let chainageTag = isPartial ? ` [${formatFurlong(oStart)}-${formatFurlong(oEnd)}]` : '';
+            tdHtml += `<td style="${cellStyle}" class="border border-slate-400 p-1 font-bold text-[10px] leading-tight select-none">${matched.scheme} (${matched.type})${chainageTag}</td>`;
           } else {
             tdHtml += `<td class="border border-slate-400 p-1.5 text-slate-300 font-medium">—</td>`;
           }
