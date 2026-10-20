@@ -297,12 +297,11 @@
           Target Scope: <span id="eligibleScopeBadge" class="text-blue-700 font-black">Current Selected Road</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <!-- BULK ALL-ROADS EXCEL EXPORT BUTTON -->
           <button onclick="exportAllEligibleToExcel()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             Export All Filtered Roads to Excel (Bulk)
           </button>
-          <button onclick="exportEligibleToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+          <button onclick="exportCurrentRoadEligibleToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
             Export Current Road (Excel)
           </button>
           <button onclick="printSection('eligiblePrintArea', 'Eligible_Stretches')" class="bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
@@ -506,6 +505,12 @@
       "trichy": "try@123", "lalgudi": "lgi@123", "manapparai": "mpa@123"
     };
 
+    // Helper function to safely format any float or string number
+    function toFixedNum(val, decimals = 3) {
+      const n = parseFloat(val);
+      return isNaN(n) ? (0).toFixed(decimals) : n.toFixed(decimals);
+    }
+
     let masterRoads = [];
     const saved = localStorage.getItem("highways_master_roads");
     if (saved) {
@@ -620,7 +625,20 @@
         
         const { data: roadsData, error: roadsErr } = await supabaseClient.from("master_roads").select("*");
         if (!roadsErr && roadsData && roadsData.length > 0) {
-          masterRoads = roadsData;
+          // Normalize road limits so strings never crash .toFixed()
+          masterRoads = roadsData.map(r => ({
+            ...r,
+            id: String(r.id),
+            start: parseFloat(r.start) || 0,
+            end: parseFloat(r.end) || 0,
+            len: parseFloat(r.len) || 0,
+            jurisdiction: Array.isArray(r.jurisdiction) ? r.jurisdiction.map(j => ({
+              ...j,
+              start: parseFloat(j.start) || 0,
+              end: parseFloat(j.end) || 0,
+              len: parseFloat(j.len) || 0
+            })) : []
+          }));
           localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
         }
 
@@ -628,11 +646,11 @@
         if (!worksErr && worksData && worksData.length > 0) {
           worksHistory = worksData.map(w => ({
             roadId: String(w.road_id),
-            from: parseFloat(w.from_km),
-            to: parseFloat(w.to_km),
-            scheme: w.scheme,
-            type: w.work_type,
-            year: w.financial_year
+            from: parseFloat(w.from_km) || 0,
+            to: parseFloat(w.to_km) || 0,
+            scheme: String(w.scheme || ''),
+            type: String(w.work_type || ''),
+            year: String(w.financial_year || '')
           }));
           localStorage.setItem("highways_works_history", JSON.stringify(worksHistory));
         }
@@ -865,7 +883,7 @@
         if (rankA !== rankB) {
           return rankA - rankB;
         }
-        return b.len - a.len;
+        return (parseFloat(b.len) || 0) - (parseFloat(a.len) || 0);
       });
     }
 
@@ -876,7 +894,7 @@
 
       let list = masterRoads;
       if (selectedSub !== "ALL") {
-        list = list.filter(r => r.subs.includes(selectedSub));
+        list = list.filter(r => r.subs && r.subs.includes(selectedSub));
       }
       if (selectedSec !== "ALL") {
         list = list.filter(r => r.jurisdiction && r.jurisdiction.some(j => j.sec === selectedSec));
@@ -922,8 +940,8 @@
 
       list.forEach(r => {
         const opt = document.createElement("option");
-        opt.value = r.id;
-        opt.innerText = `[${r.cat}] ${r.name} - Length: ${r.len.toFixed(3)} Km (Km ${r.start.toFixed(1)} to ${r.end.toFixed(1)})`;
+        opt.value = String(r.id);
+        opt.innerText = `[${r.cat}] ${r.name} - Length: ${toFixedNum(r.len, 3)} Km (Km ${toFixedNum(r.start, 1)} to ${toFixedNum(r.end, 1)})`;
         roadSelect.appendChild(opt);
       });
 
@@ -932,8 +950,9 @@
     }
 
     function formatFurlong(val) {
-      let k = Math.floor(val);
-      let f = Math.round((val - k) * 10);
+      let n = parseFloat(val) || 0;
+      let k = Math.floor(n);
+      let f = Math.round((n - k) * 10);
       if (f >= 10) { k += 1; f = 0; }
       return `${k}/${f}`;
     }
@@ -951,7 +970,8 @@
     }
 
     function parseFyStartYear(fyString) {
-      const parts = fyString.split("-");
+      if (!fyString) return 2023;
+      const parts = String(fyString).split("-");
       if (parts.length > 0) {
         const y = parseInt(parts[0]);
         if (!isNaN(y)) return y;
@@ -972,7 +992,7 @@
       let chartEnd = parseFloat(roadObj.end) || 0;
       let viewLabel = "Division Level (Full Stretch)";
 
-      // Robust check for jurisdiction array
+      // Guarantee valid jurisdiction array
       if (!roadObj.jurisdiction || !Array.isArray(roadObj.jurisdiction) || roadObj.jurisdiction.length === 0) {
         roadObj.jurisdiction = [{
           sub: (roadObj.subs && roadObj.subs[0]) ? roadObj.subs[0] : 'Trichy',
@@ -993,7 +1013,7 @@
           chartEnd = Math.max(...secJuris.map(j => parseFloat(j.end) || 0));
           viewLabel = `${selectedSec} Section Limit`;
         }
-      } else if (currentUser.role === "subdivision" || selectedSub !== "ALL") {
+      } else if (currentUser && (currentUser.role === "subdivision" || selectedSub !== "ALL")) {
         const targetSub = (currentUser.role === "subdivision") ? currentUser.subdivision : selectedSub;
         const subJuris = roadObj.jurisdiction.filter(j => j.sub === targetSub);
         if (subJuris.length > 0) {
@@ -1018,7 +1038,9 @@
         let activeDlpWork = null, latestWork = null;
 
         roadWorks.forEach(w => {
-          if (Math.max(bStart, w.from) < Math.min(bEnd, w.to)) {
+          let wFrom = parseFloat(w.from) || 0;
+          let wTo = parseFloat(w.to) || 0;
+          if (Math.max(bStart, wFrom) < Math.min(bEnd, wTo)) {
             const dlpInfo = isWorkUnderDlp(w);
             if (dlpInfo.underDlp) activeDlpWork = { ...w, ...dlpInfo };
             latestWork = { ...w, ...dlpInfo };
@@ -1088,7 +1110,7 @@
           return;
         }
 
-        // Guarantee jurisdiction validity
+        // Always guarantee jurisdiction array
         if (!roadObj.jurisdiction || !Array.isArray(roadObj.jurisdiction) || roadObj.jurisdiction.length === 0) {
           roadObj.jurisdiction = [{
             sub: (roadObj.subs && roadObj.subs[0]) ? roadObj.subs[0] : 'Trichy',
@@ -1101,7 +1123,7 @@
 
         const { chartStart, chartEnd, viewLabel } = getRoadLimitsForUser(roadObj);
         const currentTotalLen = Math.round((chartEnd - chartStart) * 1000) / 1000;
-        const titleText = `[${roadObj.cat}] ${roadObj.name} | View: ${viewLabel} | Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} (Length: ${currentTotalLen.toFixed(3)} Km)`;
+        const titleText = `[${roadObj.cat}] ${roadObj.name} | View: ${viewLabel} | Limits: Km ${toFixedNum(chartStart, 3)} - ${toFixedNum(chartEnd, 3)} (Length: ${toFixedNum(currentTotalLen, 3)} Km)`;
         if (titleChart) titleChart.innerText = titleText;
         if (titleElig) titleElig.innerText = titleText;
 
@@ -1118,13 +1140,15 @@
             let tdHtml = `<td class="border border-slate-400 p-1 font-bold bg-slate-50 text-slate-700 whitespace-nowrap text-[11px]">${chainageLabel}</td>`;
 
             years.forEach(yr => {
-              let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, w.from) < Math.min(bEnd, w.to));
+              let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, parseFloat(w.from) || 0) < Math.min(bEnd, parseFloat(w.to) || 0));
               if (matched) {
-                let oStart = Math.max(bStart, w.from);
-                let oEnd = Math.min(bEnd, w.to);
+                let wFrom = parseFloat(matched.from) || 0;
+                let wTo = parseFloat(matched.to) || 0;
+                let oStart = Math.max(bStart, wFrom);
+                let oEnd = Math.min(bEnd, wTo);
                 let pStart = Math.max(0, Math.min(100, Math.round(((oStart - bStart) / (bEnd - bStart)) * 100)));
                 let pEnd = Math.max(0, Math.min(100, Math.round(((oEnd - bStart) / (bEnd - bStart)) * 100)));
-                let hex = typeHexMap[matched.type] || '#3b82f6';
+                let hex = (typeof typeHexMap !== 'undefined' && typeHexMap[matched.type]) ? typeHexMap[matched.type] : '#3b82f6';
 
                 let cellStyle = '';
                 let isPartial = !(pStart === 0 && pEnd === 100);
@@ -1161,7 +1185,7 @@
 
             if (c.isEligible) {
               totalEligibleKm += len;
-              eligibleStrings.push(`Km ${rangeLabel} (${len.toFixed(1)} Km)`);
+              eligibleStrings.push(`Km ${rangeLabel} (${toFixedNum(len, 1)} Km)`);
             } else {
               totalDlpKm += len;
               let scName = (c.work && c.work.scheme) ? c.work.scheme : 'Scheme';
@@ -1182,12 +1206,12 @@
               <td class="p-2 border border-slate-300 font-semibold">${subJuris.sub || 'Trichy'}</td>
               <td class="p-2 border border-slate-300 font-semibold">${subJuris.sec || 'Section'}</td>
               <td class="p-2 border border-slate-300 font-bold text-slate-900">${roadObj.name}</td>
-              <td class="p-2 border border-slate-300 font-semibold">${roadObj.start.toFixed(3)}</td>
-              <td class="p-2 border border-slate-300 font-semibold">${roadObj.end.toFixed(3)}</td>
-              <td class="p-2 border border-slate-300 font-bold">${roadObj.len.toFixed(3)}</td>
+              <td class="p-2 border border-slate-300 font-semibold">${toFixedNum(roadObj.start, 3)}</td>
+              <td class="p-2 border border-slate-300 font-semibold">${toFixedNum(roadObj.end, 3)}</td>
+              <td class="p-2 border border-slate-300 font-bold">${toFixedNum(roadObj.len, 3)}</td>
               <td class="p-2 border border-slate-300 font-extrabold text-blue-900">${formatFurlong(c.start)}</td>
               <td class="p-2 border border-slate-300 font-extrabold text-blue-900">${formatFurlong(c.end)}</td>
-              <td class="p-2 border border-slate-300 font-black text-emerald-800">${len.toFixed(3)}</td>
+              <td class="p-2 border border-slate-300 font-black text-emerald-800">${toFixedNum(len, 3)}</td>
               <td class="p-2 border border-slate-300">${statusText}</td>
             `;
             eligibleTbody.appendChild(tr);
@@ -1196,8 +1220,8 @@
 
         const b1 = document.getElementById("totalEligibleBadge");
         const b2 = document.getElementById("totalDlpBadge");
-        if (b1) b1.innerText = `Total Eligible Length: ${totalEligibleKm.toFixed(3)} Km`;
-        if (b2) b2.innerText = `Under DLP Length: ${totalDlpKm.toFixed(3)} Km`;
+        if (b1) b1.innerText = `Total Eligible Length: ${toFixedNum(totalEligibleKm, 3)} Km`;
+        if (b2) b2.innerText = `Under DLP Length: ${toFixedNum(totalDlpKm, 3)} Km`;
 
         // 3. Remarks Top Badges & Jurisdiction
         let eligText = eligibleStrings.length > 0 ? eligibleStrings.join(", ") : "Nil";
@@ -1207,14 +1231,14 @@
           eligibilityBadges.innerHTML = `
             <div class="bg-emerald-600 text-white p-3 rounded-xl shadow-sm flex flex-col justify-between">
               <div>
-                <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-100">ELIGIBLE STRETCHES FOR PROPOSAL (${totalEligibleKm.toFixed(1)} Km)</div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-100">ELIGIBLE STRETCHES FOR PROPOSAL (${toFixedNum(totalEligibleKm, 1)} Km)</div>
                 <div class="text-sm font-black mt-1 leading-snug">${eligText}</div>
               </div>
               <div class="text-[11px] text-emerald-100 mt-2 font-medium">Ready for CRIDP / IRQP / SR inclusion.</div>
             </div>
             <div class="bg-rose-600 text-white p-3 rounded-xl shadow-sm flex flex-col justify-between">
               <div>
-                <div class="text-[11px] font-bold uppercase tracking-wider text-rose-100">UNDER ACTIVE DLP (${totalDlpKm.toFixed(1)} Km)</div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-rose-100">UNDER ACTIVE DLP (${toFixedNum(totalDlpKm, 1)} Km)</div>
                 <div class="text-sm font-black mt-1 leading-snug">${dlpText}</div>
               </div>
               <div class="text-[11px] text-rose-100 mt-2 font-medium">Cannot be proposed due to active DLP.</div>
@@ -1229,7 +1253,7 @@
             jurisHtml += `
               <div class="bg-white p-2.5 rounded-lg border border-amber-300/80 shadow-xs">
                 <span class="font-bold text-slate-900">${j.sub} Subdivision:</span> Section: <span class="font-semibold text-slate-700">${j.sec}</span> <br>
-                <span class="text-slate-600">Limit: <strong class="${isCurrent}">Km ${j.start.toFixed(3)} mudhal ${j.end.toFixed(3)} varai</strong> (${j.len.toFixed(3)} Km)</span>
+                <span class="text-slate-600">Limit: <strong class="${isCurrent}">Km ${toFixedNum(j.start, 3)} mudhal ${toFixedNum(j.end, 3)} varai</strong> (${toFixedNum(j.len, 3)} Km)</span>
               </div>
             `;
           });
@@ -1284,7 +1308,7 @@
             const ac = j.ac || 'Unspecified';
             const len = parseFloat(j.len) || 0;
 
-            if (currentUser.role === "subdivision" && sub !== currentUser.subdivision) return;
+            if (currentUser && currentUser.role === "subdivision" && sub !== currentUser.subdivision) return;
             if (selectedSub !== "ALL" && sub !== selectedSub) return;
             if (selectedSec !== "ALL" && sec !== selectedSec) return;
 
@@ -1318,23 +1342,23 @@
       kpiContainer.innerHTML = `
         <div class="bg-slate-900 text-white p-3 rounded-xl shadow-xs">
           <div class="text-[10px] uppercase font-bold text-slate-400">Total Road Network</div>
-          <div class="text-lg font-black text-white mt-0.5">${totals.TOTAL.toFixed(3)} <span class="text-xs font-semibold text-slate-400">Km</span></div>
+          <div class="text-lg font-black text-white mt-0.5">${toFixedNum(totals.TOTAL, 3)} <span class="text-xs font-semibold text-slate-400">Km</span></div>
         </div>
         <div class="bg-blue-700 text-white p-3 rounded-xl shadow-xs">
           <div class="text-[10px] uppercase font-bold text-blue-200">State Highways (SH)</div>
-          <div class="text-lg font-black mt-0.5">${totals.SH.toFixed(3)} <span class="text-xs font-semibold text-blue-200">Km</span></div>
+          <div class="text-lg font-black mt-0.5">${toFixedNum(totals.SH, 3)} <span class="text-xs font-semibold text-blue-200">Km</span></div>
         </div>
         <div class="bg-cyan-700 text-white p-3 rounded-xl shadow-xs">
           <div class="text-[10px] uppercase font-bold text-cyan-200">Major District (MDR)</div>
-          <div class="text-lg font-black mt-0.5">${totals.MDR.toFixed(3)} <span class="text-xs font-semibold text-cyan-200">Km</span></div>
+          <div class="text-lg font-black mt-0.5">${toFixedNum(totals.MDR, 3)} <span class="text-xs font-semibold text-cyan-200">Km</span></div>
         </div>
         <div class="bg-amber-600 text-white p-3 rounded-xl shadow-xs">
           <div class="text-[10px] uppercase font-bold text-amber-100">Other District (ODR)</div>
-          <div class="text-lg font-black mt-0.5">${totals.ODR.toFixed(3)} <span class="text-xs font-semibold text-amber-100">Km</span></div>
+          <div class="text-lg font-black mt-0.5">${toFixedNum(totals.ODR, 3)} <span class="text-xs font-semibold text-amber-100">Km</span></div>
         </div>
         <div class="bg-purple-700 text-white p-3 rounded-xl shadow-xs">
           <div class="text-[10px] uppercase font-bold text-purple-200">Special Component (SCR)</div>
-          <div class="text-lg font-black mt-0.5">${totals.SCR.toFixed(3)} <span class="text-xs font-semibold text-purple-200">Km</span></div>
+          <div class="text-lg font-black mt-0.5">${toFixedNum(totals.SCR, 3)} <span class="text-xs font-semibold text-purple-200">Km</span></div>
         </div>
       `;
 
@@ -1347,11 +1371,11 @@
           <td class="p-2 border border-slate-300 font-semibold text-slate-700">Trichy</td>
           <td class="p-2 border border-slate-300 font-semibold text-slate-900">${row.sub}</td>
           <td class="p-2 border border-slate-300 font-semibold text-slate-800">${row.sec}</td>
-          <td class="p-2 border border-slate-300 font-medium">${row.SH.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-medium">${row.MDR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-medium">${row.ODR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-medium">${row.SCR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-black text-blue-900 bg-blue-50/50">${row.Total.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${toFixedNum(row.SH, 3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${toFixedNum(row.MDR, 3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${toFixedNum(row.ODR, 3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${toFixedNum(row.SCR, 3)}</td>
+          <td class="p-2 border border-slate-300 font-black text-blue-900 bg-blue-50/50">${toFixedNum(row.Total, 3)}</td>
         `;
         secTbody.appendChild(tr);
       });
@@ -1359,11 +1383,11 @@
       secTfoot.innerHTML = `
         <tr class="bg-slate-900 text-white font-black text-[11px] uppercase">
           <td colspan="4" class="p-2 border border-slate-800 text-right pr-4">Total Length:</td>
-          <td class="p-2 border border-slate-800">${totals.SH.toFixed(3)}</td>
-          <td class="p-2 border border-slate-800">${totals.MDR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-800">${totals.ODR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-800">${totals.SCR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-800 bg-emerald-700 text-white">${totals.TOTAL.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800">${toFixedNum(totals.SH, 3)}</td>
+          <td class="p-2 border border-slate-800">${toFixedNum(totals.MDR, 3)}</td>
+          <td class="p-2 border border-slate-800">${toFixedNum(totals.ODR, 3)}</td>
+          <td class="p-2 border border-slate-800">${toFixedNum(totals.SCR, 3)}</td>
+          <td class="p-2 border border-slate-800 bg-emerald-700 text-white">${toFixedNum(totals.TOTAL, 3)}</td>
         </tr>
       `;
 
@@ -1374,11 +1398,11 @@
         tr.innerHTML = `
           <td class="p-2 border border-slate-300 font-bold">${i + 1}</td>
           <td class="p-2 border border-slate-300 font-bold text-slate-900 text-left pl-4">${row.ac} Constituency</td>
-          <td class="p-2 border border-slate-300 font-medium">${row.SH.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-medium">${row.MDR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-medium">${row.ODR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-medium">${row.SCR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-black text-indigo-900 bg-indigo-50/50">${row.Total.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${toFixedNum(row.SH, 3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${toFixedNum(row.MDR, 3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${toFixedNum(row.ODR, 3)}</td>
+          <td class="p-2 border border-slate-300 font-medium">${toFixedNum(row.SCR, 3)}</td>
+          <td class="p-2 border border-slate-300 font-black text-indigo-900 bg-indigo-50/50">${toFixedNum(row.Total, 3)}</td>
         `;
         acTbody.appendChild(tr);
       });
@@ -1386,11 +1410,11 @@
       acTfoot.innerHTML = `
         <tr class="bg-slate-900 text-white font-black text-[11px] uppercase">
           <td colspan="2" class="p-2 border border-slate-800 text-right pr-4">Total Length:</td>
-          <td class="p-2 border border-slate-800">${totals.SH.toFixed(3)}</td>
-          <td class="p-2 border border-slate-800">${totals.MDR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-800">${totals.ODR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-800">${totals.SCR.toFixed(3)}</td>
-          <td class="p-2 border border-slate-800 bg-emerald-700 text-white">${totals.TOTAL.toFixed(3)}</td>
+          <td class="p-2 border border-slate-800">${toFixedNum(totals.SH, 3)}</td>
+          <td class="p-2 border border-slate-800">${toFixedNum(totals.MDR, 3)}</td>
+          <td class="p-2 border border-slate-800">${toFixedNum(totals.ODR, 3)}</td>
+          <td class="p-2 border border-slate-800">${toFixedNum(totals.SCR, 3)}</td>
+          <td class="p-2 border border-slate-800 bg-emerald-700 text-white">${toFixedNum(totals.TOTAL, 3)}</td>
         </tr>
       `;
     }
@@ -1425,12 +1449,12 @@
             "Section": subJuris.sec,
             "Category": road.cat,
             "Name of the Road": road.name,
-            "Road Start (Km)": road.start.toFixed(3),
-            "Road End (Km)": road.end.toFixed(3),
-            "Total Length (Km)": road.len.toFixed(3),
+            "Road Start (Km)": toFixedNum(road.start, 3),
+            "Road End (Km)": toFixedNum(road.end, 3),
+            "Total Length (Km)": toFixedNum(road.len, 3),
             "Stretch Start (Km)": formatFurlong(c.start),
             "Stretch End (Km)": formatFurlong(c.end),
-            "Stretch Length (Km)": len.toFixed(3),
+            "Stretch Length (Km)": toFixedNum(len, 3),
             "DLP / Proposal Status": statusDesc,
             "Previous Scheme Details": schemeInfo
           });
@@ -1494,13 +1518,13 @@
                 <h1 style="font-size: 13px; font-weight: 900; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px;">HIGHWAYS DEPARTMENT, TAMIL NADU</h1>
                 <h2 style="font-size: 11px; font-weight: 700; color: #475569; margin: 2px 0 0 0; text-transform: uppercase;">Construction & Maintenance, Tiruchirappalli Division</h2>
                 <div style="display: inline-block; background: #eff6ff; color: #1e3a8a; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; border: 1px solid #bfdbfe; margin-top: 5px;">
-                  [${road.cat}] ${road.name} &nbsp;|&nbsp; Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} &nbsp;|&nbsp; Length: ${currentTotalLen.toFixed(3)} Km
+                  [${road.cat}] ${road.name} &nbsp;|&nbsp; Limits: Km ${toFixedNum(chartStart, 3)} - ${toFixedNum(chartEnd, 3)} &nbsp;|&nbsp; Length: ${toFixedNum(currentTotalLen, 3)} Km
                 </div>
               </div>
 
               <div style="display: flex; justify-content: space-between; font-size: 9.5px; font-weight: 700; color: #334155; margin-bottom: 8px; background: #f8fafc; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
                 <span>Category: <strong style="color: #1d4ed8;">${road.cat}</strong></span>
-                <span>Subdivision: ${road.subs.join(', ')}</span>
+                <span>Subdivision: ${road.subs ? road.subs.join(', ') : ''}</span>
                 <span>Scope: ${viewLabel}</span>
                 <span>Granularity: 200m (Furlong)</span>
               </div>
@@ -1522,11 +1546,13 @@
 
           html += `<tr><td style="border: 1px solid #94a3b8; padding: 2.5px 2px; font-weight: 800; background: #f8fafc; color: #1e293b;">${label}</td>`;
           years.forEach(yr => {
-            let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, w.from) < Math.min(bEnd, w.to));
+            let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, parseFloat(w.from) || 0) < Math.min(bEnd, parseFloat(w.to) || 0));
             if (matched) {
               let colorBg = typeHexMap[matched.type] || "#047857";
-              let oStart = Math.max(bStart, w.from);
-              let oEnd = Math.min(bEnd, w.to);
+              let wFrom = parseFloat(matched.from) || 0;
+              let wTo = parseFloat(matched.to) || 0;
+              let oStart = Math.max(bStart, wFrom);
+              let oEnd = Math.min(bEnd, wTo);
               let pStart = Math.round(((oStart - bStart) / (bEnd - bStart)) * 100);
               let pEnd = Math.round(((oEnd - bStart) / (bEnd - bStart)) * 100);
 
@@ -1551,7 +1577,7 @@
 
               <div style="font-size: 8.5px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; margin-top: 4px;">
                 <span style="font-weight: 800; color: #0f172a;">Section Distribution: </span>
-                ${road.jurisdiction ? road.jurisdiction.map(j => `<span style="margin-right: 8px;"><strong>${j.sub} (${j.sec}):</strong> Km ${j.start.toFixed(1)} to ${j.end.toFixed(1)} (${j.len.toFixed(1)} Km)</span>`).join('') : ''}
+                ${road.jurisdiction ? road.jurisdiction.map(j => `<span style="margin-right: 8px;"><strong>${j.sub} (${j.sec}):</strong> Km ${toFixedNum(j.start, 1)} to ${toFixedNum(j.end, 1)} (${toFixedNum(j.len, 1)} Km)</span>`).join('') : ''}
               </div>
             </div>
 
@@ -1634,15 +1660,17 @@
       }
 
       currentWorks.forEach((w, i) => {
-        const len = Math.round(Math.abs(w.to - w.from) * 1000) / 1000;
+        const wFrom = parseFloat(w.from) || 0;
+        const wTo = parseFloat(w.to) || 0;
+        const len = Math.round(Math.abs(wTo - wFrom) * 1000) / 1000;
         const tr = document.createElement("tr");
         tr.className = "hover:bg-blue-50/70 border-b border-blue-100";
         tr.innerHTML = `
           <td class="p-1.5 font-bold">${i + 1}</td>
-          <td class="p-1.5 font-extrabold text-blue-900">${formatFurlong(w.from)} - ${formatFurlong(w.to)} <span class="text-[10px] text-slate-500 font-normal">(${w.from.toFixed(3)} - ${w.to.toFixed(3)})</span></td>
-          <td class="p-1.5 font-bold">${len.toFixed(3)}</td>
+          <td class="p-1.5 font-extrabold text-blue-900">${formatFurlong(wFrom)} - ${formatFurlong(wTo)} <span class="text-[10px] text-slate-500 font-normal">(${toFixedNum(wFrom, 3)} - ${toFixedNum(wTo, 3)})</span></td>
+          <td class="p-1.5 font-bold">${toFixedNum(len, 3)}</td>
           <td class="p-1.5 font-bold text-slate-800">${w.scheme}</td>
-          <td class="p-1.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeColorMap[w.type]}">${w.type}</span></td>
+          <td class="p-1.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeColorMap[w.type] || 'bg-blue-600 text-white'}">${w.type}</span></td>
           <td class="p-1.5 font-semibold">${w.year}</td>
           <td class="p-1.5 space-x-1 whitespace-nowrap">
             <button onclick="editWorkEntry(${w.globalIdx})" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-xs transition">Edit</button>
@@ -1720,8 +1748,8 @@
           await supabaseClient.from("road_works").delete()
             .match({
               road_id: String(w.roadId),
-              from_km: w.from,
-              to_km: w.to,
+              from_km: parseFloat(w.from),
+              to_km: parseFloat(w.to),
               scheme: w.scheme,
               financial_year: w.year
             });
@@ -1764,8 +1792,11 @@
         return;
       }
 
-      if (fromKm < roadObj.start || toKm > roadObj.end) {
-        alert(`Chainage thavaraga ulladhu! Intha road muzhu division limit: Km ${roadObj.start} mudhal ${roadObj.end} varai mattum thaan.`);
+      const rStart = parseFloat(roadObj.start) || 0;
+      const rEnd = parseFloat(roadObj.end) || 0;
+
+      if (fromKm < rStart || toKm > rEnd) {
+        alert(`Chainage thavaraga ulladhu! Intha road muzhu division limit: Km ${toFixedNum(rStart, 3)} mudhal ${toFixedNum(rEnd, 3)} varai mattum thaan.`);
         return;
       }
 
@@ -1779,8 +1810,8 @@
             await supabaseClient.from("road_works").delete()
               .match({
                 road_id: String(oldWork.roadId),
-                from_km: oldWork.from,
-                to_km: oldWork.to,
+                from_km: parseFloat(oldWork.from),
+                to_km: parseFloat(oldWork.to),
                 scheme: oldWork.scheme,
                 financial_year: oldWork.year
               });
