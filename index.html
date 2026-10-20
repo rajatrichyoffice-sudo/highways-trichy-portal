@@ -192,6 +192,37 @@
           <option value="2026-27">2026-27</option>
         </select>
         <button onclick="addCustomWorkEntry()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs shadow transition">Save Work</button>
+<input type="hidden" id="editWorkId" value="">
+        <div class="flex gap-1.5">
+          <button id="saveWorkBtn" onclick="addCustomWorkEntry()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs shadow transition">Save Work</button>
+          <button id="cancelEditBtn" onclick="cancelWorkEdit()" class="hidden bg-slate-400 hover:bg-slate-500 text-white font-bold py-2 px-2.5 rounded-lg text-xs shadow transition">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Manage Existing Work History for this Road (Edit / Delete Table) -->
+      <div class="mt-3.5 pt-3 border-t border-blue-200">
+        <div class="flex justify-between items-center mb-1.5">
+          <h4 class="text-[11px] font-bold text-blue-900 uppercase">Manage Existing Works for Selected Road:</h4>
+          <span class="text-[10px] text-blue-600 font-semibold">Modify / Delete entries anytime</span>
+        </div>
+        <div class="overflow-x-auto max-h-48 overflow-y-auto bg-white rounded-lg border border-blue-200">
+          <table class="w-full text-center text-[11px] border-collapse" id="adminWorksHistoryTable">
+            <thead class="bg-blue-100 text-blue-900 sticky top-0">
+              <tr>
+                <th class="p-1.5 border-b">S.No</th>
+                <th class="p-1.5 border-b">From - To (Km)</th>
+                <th class="p-1.5 border-b">Length (Km)</th>
+                <th class="p-1.5 border-b">Scheme</th>
+                <th class="p-1.5 border-b">Work Type</th>
+                <th class="p-1.5 border-b">Year</th>
+                <th class="p-1.5 border-b">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminWorksHistoryRows">
+              <tr><td colspan="7" class="p-2 text-slate-400">No works history recorded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
