@@ -165,10 +165,13 @@
     </div>
 
     <!-- ADMIN DATA ENTRY PANEL -->
-<div id="adminPanel" class="hidden bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm">
+    <div id="adminPanel" class="hidden bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm">
       <div class="flex items-center justify-between mb-2.5">
         <h3 class="font-bold text-xs uppercase tracking-wide text-blue-900">Add / Update Road Scheme Work</h3>
-        <span class="text-[11px] text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded">Super Admin Entry</span>
+        <div class="flex items-center gap-2">
+          <button onclick="resetAllWorksHistory()" class="bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 font-bold px-2.5 py-0.5 rounded text-[11px] shadow-xs transition" title="Clear all work histories if corrupted">Reset Works History</button>
+          <span class="text-[11px] text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded">Super Admin Entry</span>
+        </div>
       </div>
       <div class="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
         <input type="number" step="0.001" id="fromKm" placeholder="From Km (0.000)" class="w-full border p-2 rounded-lg bg-white">
@@ -294,12 +297,11 @@
           Target Scope: <span id="eligibleScopeBadge" class="text-blue-700 font-black">Current Selected Road</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <!-- BULK ALL-ROADS EXCEL EXPORT BUTTON -->
           <button onclick="exportAllEligibleToExcel()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             Export All Filtered Roads to Excel (Bulk)
           </button>
-          <button onclick="exportEligibleToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+          <button onclick="exportCurrentRoadEligibleToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
             Export Current Road (Excel)
           </button>
           <button onclick="printSection('eligiblePrintArea', 'Eligible_Stretches')" class="bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
@@ -515,6 +517,15 @@
       try { worksHistory = JSON.parse(savedWorks); } catch(e) { worksHistory = []; }
     }
 
+    const typeHexMap = {
+      "Widening & Strengthening": "#047857",
+      "Widening": "#0891b2",
+      "Strengthening": "#f59e0b",
+      "IRQP": "#9333ea",
+      "Special Repairs": "#ea580c",
+      "Periodical Renewal": "#3b82f6"
+    };
+
     const typeColorMap = {
       "Widening & Strengthening": "bg-emerald-700 text-white",
       "Widening": "bg-cyan-600 text-white",
@@ -594,7 +605,7 @@
       renderCurrentTab();
     }
 
-   async function loadDataFromSupabase() {
+    async function loadDataFromSupabase() {
       const syncBadge = document.getElementById("syncBadge");
       if (!supabaseClient) {
         if (syncBadge) {
@@ -631,7 +642,6 @@
           syncBadge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800";
         }
         
-        // Mobile-il data vanthavudan abstract auto-refresh aaga
         if (currentTab === "abstract") {
           renderRoadAbstracts();
         }
@@ -681,7 +691,7 @@
       onSubdivisionFilterChange();
     }
 
-async function handleExcelUpload(event) {
+    async function handleExcelUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
 
@@ -698,12 +708,11 @@ async function handleExcelUpload(event) {
           if (!r || !r[4] || !r[11]) continue;
           let sub = String(r[4]).trim();
           let sec = String(r[5] || sub).trim();
-          let ac = String(r[7] || '').trim(); // Assembly Constituency
-          let pc = String(r[8] || '').trim(); // Parliament Constituency
+          let ac = String(r[7] || '').trim();
+          let pc = String(r[8] || '').trim();
           let cat = String(r[9] || 'ODR').trim().toUpperCase();
           let name = String(r[11]).trim();
 
-          // Skip header row if it contains column titles
           if (sub.toLowerCase() === "sub division" || sub.toLowerCase() === "subdivision" || name.toLowerCase().includes("name of the road")) continue;
 
           let start = parseFloat(r[12]) || 0;
@@ -742,7 +751,6 @@ async function handleExcelUpload(event) {
           masterRoads = uploadedList;
           localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
 
-          // Supabase-kku schema-vudan sariyaana columns mattum payload-aaga anuppudhal
           let cloudSaved = false;
           if (supabaseClient) {
             try {
@@ -860,9 +868,9 @@ async function handleExcelUpload(event) {
         const rankA = getCategoryRank(a.cat);
         const rankB = getCategoryRank(b.cat);
         if (rankA !== rankB) {
-          return rankA - rankB; // SH -> MDR -> ODR -> SCR
+          return rankA - rankB;
         }
-        return b.len - a.len; // Highest Length to Lowest Length
+        return b.len - a.len;
       });
     }
 
@@ -1080,25 +1088,16 @@ async function handleExcelUpload(event) {
       const roadWorks = worksHistory.filter(w => w.roadId === roadObj.id);
       const years = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"];
 
-   // 1. Render Visual Grid (Section 1) - 200m Furlong Split: 0/0 - 0/2...
+      // 1. Render Visual Grid (Section 1) - 200m Furlong Split: 0/0 - 0/2...
       const stepKm = 0.2;
-      const typeHexMap = {
-        "Widening & Strengthening": "#047857",
-        "Widening": "#0891b2",
-        "Strengthening": "#f59e0b",
-        "IRQP": "#9333ea",
-        "Special Repairs": "#ea580c",
-        "Periodical Renewal": "#3b82f6"
-      };
-
       for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
         let bStart = km;
         let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
         let chainageLabel = `${formatFurlong(bStart)} - ${formatFurlong(bEnd)}`;
         let tdHtml = `<td class="border border-slate-400 p-1 font-bold bg-slate-50 text-slate-700 whitespace-nowrap text-[11px]">${chainageLabel}</td>`;
 
+        // Uses global typeHexMap
         years.forEach(yr => {
-          // 200m furlong block-il ethavathu overlap irukkaa endru check seithal
           let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, w.from) < Math.min(bEnd, w.to));
           if (matched) {
             let oStart = Math.max(bStart, w.from);
@@ -1113,7 +1112,6 @@ async function handleExcelUpload(event) {
             if (!isPartial) {
               cellStyle = `background-color: ${hex}; color: white;`;
             } else {
-              // Exact CSS linear-gradient: Paathi color mattum render aagum
               cellStyle = `background: linear-gradient(to right, #ffffff 0%, #ffffff ${pStart}%, ${hex} ${pStart}%, ${hex} ${pEnd}%, #ffffff ${pEnd}%, #ffffff 100%); color: ${pEnd - pStart >= 50 ? 'white' : '#0f172a'}; text-shadow: ${pEnd - pStart >= 50 ? '0 1px 2px rgba(0,0,0,0.6)' : 'none'};`;
             }
 
@@ -1144,7 +1142,7 @@ async function handleExcelUpload(event) {
           eligibleStrings.push(`Km ${rangeLabel} (${len.toFixed(1)} Km)`);
         } else {
           totalDlpKm += len;
-          dlpStrings.push(`Km ${rangeLabel} [${c.work.scheme} - ${c.work.year}]`);
+          dlpStrings.push(`Km ${rangeLabel} [${(c.work && c.work.scheme) ? c.work.scheme : 'DLP'} - ${(c.work && c.work.year) ? c.work.year : ''}]`);
         }
 
         const tr = document.createElement("tr");
@@ -1152,7 +1150,7 @@ async function handleExcelUpload(event) {
 
         let statusText = c.isEligible ?
           `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-emerald-600 text-white shadow-xs">ELIGIBLE</span>` :
-          `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-rose-600 text-white shadow-xs">DLP (Upto ${c.work.dlpExpiryYear})</span>`;
+          `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-rose-600 text-white shadow-xs">DLP (Upto ${(c.work && c.work.dlpExpiryYear) ? c.work.dlpExpiryYear : 'Active'})</span>`;
 
         tr.innerHTML = `
           <td class="p-2 border border-slate-300 font-bold">${idx + 1}</td>
@@ -1205,7 +1203,7 @@ async function handleExcelUpload(event) {
         `;
       });
       jurisHtml += `</div>`;
-     remarkJuris.innerHTML = jurisHtml;
+      remarkJuris.innerHTML = jurisHtml;
       renderAdminWorksHistoryTable(roadObj.id);
     }
 
@@ -1237,9 +1235,8 @@ async function handleExcelUpload(event) {
       if (abstractScopeBadge) abstractScopeBadge.innerText = scopeLabel;
       if (abstractReportTitle) abstractReportTitle.innerText = `${scopeLabel} | Category-Wise Abstracts (SH / MDR / ODR / SCR)`;
 
-      // Data aggregation buckets
-      let sectionMap = {};       // key: "sub__sec"
-      let constituencyMap = {};  // key: "ac"
+      let sectionMap = {};
+      let constituencyMap = {};
       let totals = { SH: 0, MDR: 0, ODR: 0, SCR: 0, TOTAL: 0 };
 
       masterRoads.forEach(road => {
@@ -1251,12 +1248,10 @@ async function handleExcelUpload(event) {
             const ac = j.ac || 'Unspecified';
             const len = parseFloat(j.len) || 0;
 
-            // Apply User / Screen Filter
             if (currentUser.role === "subdivision" && sub !== currentUser.subdivision) return;
             if (selectedSub !== "ALL" && sub !== selectedSub) return;
             if (selectedSec !== "ALL" && sec !== selectedSec) return;
 
-            // 1. Section Aggregation
             const secKey = `${sub}__${sec}`;
             if (!sectionMap[secKey]) {
               sectionMap[secKey] = { sub: sub, sec: sec, SH: 0, MDR: 0, ODR: 0, SCR: 0, Total: 0 };
@@ -1268,7 +1263,6 @@ async function handleExcelUpload(event) {
             }
             sectionMap[secKey].Total += len;
 
-            // 2. Constituency Aggregation
             if (!constituencyMap[ac]) {
               constituencyMap[ac] = { ac: ac, SH: 0, MDR: 0, ODR: 0, SCR: 0, Total: 0 };
             }
@@ -1279,14 +1273,12 @@ async function handleExcelUpload(event) {
             }
             constituencyMap[ac].Total += len;
 
-            // 3. Overall Totals
             if (totals[cat] !== undefined) totals[cat] += len;
             totals.TOTAL += len;
           });
         }
       });
 
-      // KPI Summary Cards
       kpiContainer.innerHTML = `
         <div class="bg-slate-900 text-white p-3 rounded-xl shadow-xs">
           <div class="text-[10px] uppercase font-bold text-slate-400">Total Road Network</div>
@@ -1310,7 +1302,6 @@ async function handleExcelUpload(event) {
         </div>
       `;
 
-      // 1. Populate Section Table
       const secList = Object.values(sectionMap).sort((a, b) => a.sub.localeCompare(b.sub) || a.sec.localeCompare(b.sec));
       secList.forEach((row, i) => {
         const tr = document.createElement("tr");
@@ -1340,7 +1331,6 @@ async function handleExcelUpload(event) {
         </tr>
       `;
 
-      // 2. Populate Constituency Table
       const acList = Object.values(constituencyMap).sort((a, b) => b.Total - a.Total);
       acList.forEach((row, i) => {
         const tr = document.createElement("tr");
@@ -1369,7 +1359,6 @@ async function handleExcelUpload(event) {
       `;
     }
 
-    // EXPORT ALL ROADS ELIGIBLE LIST TO EXCEL (COMPREHENSIVE DIVISION / SUBDIVISION STATEMENT)
     function exportAllEligibleToExcel() {
       const list = getFilteredRoadsList();
 
@@ -1420,7 +1409,6 @@ async function handleExcelUpload(event) {
       XLSX.writeFile(wb, `Trichy_Highways_All_Roads_Eligible_Statement_${fileScope}.xlsx`);
     }
 
-    // EXPORT CURRENT ROAD ELIGIBLE TO EXCEL
     function exportCurrentRoadEligibleToExcel() {
       const table = document.getElementById("eligibleExportTable");
       const wb = XLSX.utils.table_to_book(table, { sheet: "Eligible_Stretches" });
@@ -1429,7 +1417,6 @@ async function handleExcelUpload(event) {
       XLSX.writeFile(wb, `${roadName}_Eligible_Stretches.xlsx`);
     }
 
-    // EXPORT ABSTRACT TABLES TO EXCEL (SUBDIVISION, SECTION & CONSTITUENCY SHEETS)
     function exportAbstractToExcel() {
       const wb = XLSX.utils.book_new();
       
@@ -1445,7 +1432,6 @@ async function handleExcelUpload(event) {
       XLSX.writeFile(wb, `Trichy_Highways_Road_Abstracts_${selectedSub}.xlsx`);
     }
 
-    // MULTI-PAGE ROAD CHART BOOKLET BUILDER (ALL ROADS IN VIEW, SORTED SH > MDR > ODR > SCR, 200M FURLONG, PAGE NUMBERS)
     function buildBookletHtml(list) {
       const selectedSub = document.getElementById("subdivisionSelect").value;
       const selectedSec = document.getElementById("sectionSelect") ? document.getElementById("sectionSelect").value : "ALL";
@@ -1468,7 +1454,6 @@ async function handleExcelUpload(event) {
         html += `
           <div class="road-booklet-page" style="box-sizing: border-box; padding: 12px 10px; min-height: 1040px; display: flex; flex-direction: column; justify-content: space-between; border-bottom: 2px dashed #cbd5e1;">
             <div>
-              <!-- Header -->
               <div style="text-align: center; border-bottom: 2px solid #1e40af; padding-bottom: 8px; margin-bottom: 10px;">
                 <h1 style="font-size: 13px; font-weight: 900; text-transform: uppercase; margin: 0; color: #0f172a; letter-spacing: 0.5px;">HIGHWAYS DEPARTMENT, TAMIL NADU</h1>
                 <h2 style="font-size: 11px; font-weight: 700; color: #475569; margin: 2px 0 0 0; text-transform: uppercase;">Construction & Maintenance, Tiruchirappalli Division</h2>
@@ -1477,7 +1462,6 @@ async function handleExcelUpload(event) {
                 </div>
               </div>
 
-              <!-- Metadata Info Strip -->
               <div style="display: flex; justify-content: space-between; font-size: 9.5px; font-weight: 700; color: #334155; margin-bottom: 8px; background: #f8fafc; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
                 <span>Category: <strong style="color: #1d4ed8;">${road.cat}</strong></span>
                 <span>Subdivision: ${road.subs.join(', ')}</span>
@@ -1485,7 +1469,6 @@ async function handleExcelUpload(event) {
                 <span>Granularity: 200m (Furlong)</span>
               </div>
 
-              <!-- Visual Road Chart Table -->
               <table style="width: 100%; border-collapse: collapse; font-size: 9px; text-align: center; border: 1px solid #94a3b8; margin-bottom: 8px;">
                 <thead>
                   <tr style="background: #e2e8f0; color: #0f172a; font-weight: 800; text-transform: uppercase;">
@@ -1503,16 +1486,22 @@ async function handleExcelUpload(event) {
 
           html += `<tr><td style="border: 1px solid #94a3b8; padding: 2.5px 2px; font-weight: 800; background: #f8fafc; color: #1e293b;">${label}</td>`;
           years.forEach(yr => {
-            let matched = roadWorks.find(w => w.year === yr && bStart >= w.from && bEnd <= w.to);
+            let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, w.from) < Math.min(bEnd, w.to));
             if (matched) {
-              let colorBg = "#047857";
-              if (matched.type.includes("Widening") && !matched.type.includes("Strengthening")) colorBg = "#0891b2";
-              else if (matched.type.includes("Strengthening")) colorBg = "#d97706";
-              else if (matched.type.includes("IRQP")) colorBg = "#9333ea";
-              else if (matched.type.includes("Special Repairs")) colorBg = "#ea580c";
-              else if (matched.type.includes("Periodical Renewal")) colorBg = "#3b82f6";
+              let colorBg = typeHexMap[matched.type] || "#047857";
+              let oStart = Math.max(bStart, w.from);
+              let oEnd = Math.min(bEnd, w.to);
+              let pStart = Math.round(((oStart - bStart) / (bEnd - bStart)) * 100);
+              let pEnd = Math.round(((oEnd - bStart) / (bEnd - bStart)) * 100);
 
-              html += `<td style="border: 1px solid #94a3b8; padding: 2.5px 2px; font-weight: 800; background: ${colorBg}; color: white; font-size: 8px;">${matched.scheme}</td>`;
+              let styleStr = '';
+              if (pStart === 0 && pEnd === 100) {
+                styleStr = `background: ${colorBg}; color: white;`;
+              } else {
+                styleStr = `background: linear-gradient(to right, #ffffff 0%, #ffffff ${pStart}%, ${colorBg} ${pStart}%, ${colorBg} ${pEnd}%, #ffffff ${pEnd}%, #ffffff 100%); color: ${pEnd - pStart >= 50 ? 'white' : '#0f172a'}; text-shadow: ${pEnd - pStart >= 50 ? '0 1px 2px rgba(0,0,0,0.5)' : 'none'};`;
+              }
+              let partialNote = (pStart !== 0 || pEnd !== 100) ? ` [${formatFurlong(oStart)}-${formatFurlong(oEnd)}]` : '';
+              html += `<td style="border: 1px solid #94a3b8; padding: 2px 1px; font-weight: 800; font-size: 7.5px; ${styleStr}">${matched.scheme}${partialNote}</td>`;
             } else {
               html += `<td style="border: 1px solid #94a3b8; padding: 2.5px 2px; color: #cbd5e1; font-weight: 600;">—</td>`;
             }
@@ -1524,14 +1513,12 @@ async function handleExcelUpload(event) {
                 </tbody>
               </table>
 
-              <!-- Section Jurisdiction Distribution Box -->
               <div style="font-size: 8.5px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; margin-top: 4px;">
                 <span style="font-weight: 800; color: #0f172a;">Section Distribution: </span>
                 ${road.jurisdiction ? road.jurisdiction.map(j => `<span style="margin-right: 8px;"><strong>${j.sub} (${j.sec}):</strong> Km ${j.start.toFixed(1)} to ${j.end.toFixed(1)} (${j.len.toFixed(1)} Km)</span>`).join('') : ''}
               </div>
             </div>
 
-            <!-- Page Footer with Official Signatures & Pagination -->
             <div style="border-top: 1px solid #94a3b8; padding-top: 6px; margin-top: 8px; font-size: 8.5px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
               <span>Highways Department Trichy (C&M) - ${scopeLabel}</span>
               <span style="font-weight: 700;">Section Officer (H) &nbsp;&nbsp;|&nbsp;&nbsp; ADE (H) &nbsp;&nbsp;|&nbsp;&nbsp; Divisional Engineer (H)</span>
@@ -1545,7 +1532,6 @@ async function handleExcelUpload(event) {
       return html;
     }
 
-    // TRIGGER BOOKLET PRINT OR DOWNLOAD (A4 PORTRAIT)
     function triggerBookletPrint(mode) {
       const list = getFilteredRoadsList();
 
@@ -1596,7 +1582,7 @@ async function handleExcelUpload(event) {
       }).save();
     }
 
-// Admin Works Table-il entries-ai kaattudhal
+    // Render Admin Management Table for Works History
     function renderAdminWorksHistoryTable(roadId) {
       const rowsContainer = document.getElementById("adminWorksHistoryRows");
       if (!rowsContainer) return;
@@ -1631,7 +1617,25 @@ async function handleExcelUpload(event) {
       });
     }
 
-    // Work Entry-ai Edit seiya inputs-il load seithal
+    // Reset only Works History (Leaves Master Roads 100% intact!)
+    async function resetAllWorksHistory() {
+      if (confirm("Are you sure you want to RESET only the Works History?\n\nNOTE: Master Roads (1323.833 Km) will NOT be touched. Only scheme history entries will be cleared.")) {
+        worksHistory = [];
+        localStorage.removeItem("highways_works_history");
+        if (supabaseClient) {
+          try {
+            await supabaseClient.from("road_works").delete().neq("id", "none");
+          } catch(e) {
+            console.warn("Supabase works clear err:", e);
+          }
+        }
+        cancelWorkEdit();
+        renderCurrentTab();
+        alert("Works History successfully reset! Master Roads are safe and working.");
+      }
+    }
+
+    // Edit an existing work entry
     function editWorkEntry(globalIdx) {
       const w = worksHistory[globalIdx];
       if (!w) return;
@@ -1652,7 +1656,7 @@ async function handleExcelUpload(event) {
       document.getElementById("adminPanel").scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Edit-ai cancel seithal
+    // Cancel edit mode
     function cancelWorkEdit() {
       document.getElementById("editWorkId").value = "";
       document.getElementById("fromKm").value = "";
@@ -1666,7 +1670,7 @@ async function handleExcelUpload(event) {
       cancelBtn.classList.add("hidden");
     }
 
-    // Work Entry-ai delete seithal (Cloud + Local)
+    // Delete a work entry
     async function deleteWorkEntry(globalIdx) {
       const w = worksHistory[globalIdx];
       if (!w) return;
@@ -1698,7 +1702,7 @@ async function handleExcelUpload(event) {
       alert("Work entry vetrigaramaaga delete seiyappattadhu!");
     }
 
-    // Pudhiya work add alladhu palaya work-ai update seithal
+    // Add or Update work entry
     async function addCustomWorkEntry() {
       const roadId = document.getElementById("roadSelect").value;
       const fromKm = parseFloat(document.getElementById("fromKm").value);
