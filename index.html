@@ -1080,22 +1080,22 @@ async function handleExcelUpload(event) {
       const roadWorks = worksHistory.filter(w => w.roadId === roadObj.id);
       const years = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"];
 
-      // 1. Render Visual Grid (Section 1) - 200m Furlong Split: 0/0 - 0/2...
+   // 1. Render Visual Grid (Section 1) - 200m Furlong Split: 0/0 - 0/2...
       const stepKm = 0.2;
+      const typeHexMap = {
+        "Widening & Strengthening": "#047857",
+        "Widening": "#0891b2",
+        "Strengthening": "#f59e0b",
+        "IRQP": "#9333ea",
+        "Special Repairs": "#ea580c",
+        "Periodical Renewal": "#3b82f6"
+      };
+
       for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
         let bStart = km;
         let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
         let chainageLabel = `${formatFurlong(bStart)} - ${formatFurlong(bEnd)}`;
         let tdHtml = `<td class="border border-slate-400 p-1 font-bold bg-slate-50 text-slate-700 whitespace-nowrap text-[11px]">${chainageLabel}</td>`;
-
-const typeHexMap = {
-          "Widening & Strengthening": "#047857",
-          "Widening": "#0891b2",
-          "Strengthening": "#f59e0b",
-          "IRQP": "#9333ea",
-          "Special Repairs": "#ea580c",
-          "Periodical Renewal": "#3b82f6"
-        };
 
         years.forEach(yr => {
           // 200m furlong block-il ethavathu overlap irukkaa endru check seithal
