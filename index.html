@@ -297,6 +297,7 @@
           Target Scope: <span id="eligibleScopeBadge" class="text-blue-700 font-black">Current Selected Road</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <!-- BULK ALL-ROADS EXCEL EXPORT BUTTON -->
           <button onclick="exportAllEligibleToExcel()" class="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded-xl text-xs font-black shadow flex items-center gap-1.5 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             Export All Filtered Roads to Excel (Bulk)
@@ -575,7 +576,6 @@
       const remarkBox = document.getElementById("remarkBox");
       const roadDropdownWrapper = document.getElementById("roadDropdownWrapper");
 
-      // Reset tabs styling
       const inactiveClass = "py-2.5 px-4 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
       btnChart.className = inactiveClass;
       btnElig.className = inactiveClass;
@@ -790,7 +790,7 @@
           if (cloudSaved) {
             alert(`Excel Upload Success! ${masterRoads.length} unique roads successfully saved to Cloud DB! Ella devices (Mobile, Desktop, APK) ippodhu intha data-vai orey maadhiri kaattum.`);
           } else if (!supabaseClient) {
-            alert(`Excel Upload Success! ${masterRoads.length} roads local-il save aagiyulladhu. Aanaal Supabase client connect aagavillai (Anon Key-ai index.html-il paste seiyavum).`);
+            alert(`Excel Upload Success! ${masterRoads.length} roads local-il save aagiyulladhu. Aanaal Supabase client connect aagavillai.`);
           }
 
           onSubdivisionFilterChange();
@@ -1000,7 +1000,6 @@
       return { chartStart, chartEnd, viewLabel };
     }
 
-    // CORE REUSABLE ELIGIBILITY CALCULATION FUNCTION FOR SINGLE / MULTI-ROADS
     function getRoadStretchesAnalysis(roadObj) {
       const { chartStart, chartEnd } = getRoadLimitsForUser(roadObj);
       const roadWorks = worksHistory.filter(w => w.roadId === roadObj.id);
@@ -1054,157 +1053,177 @@
     }
 
     function renderCurrentTab() {
-      if (currentTab === "abstract") {
-        renderRoadAbstracts();
-        return;
-      }
-
-      const roadId = document.getElementById("roadSelect").value;
-      const roadObj = masterRoads.find(r => r.id === roadId);
-      const titleChart = document.getElementById("chartRoadTitle");
-      const titleElig = document.getElementById("eligibleRoadTitle");
-      const tbodyChart = document.getElementById("chartRows");
-      const eligibleTbody = document.getElementById("eligibleTableRows");
-      const eligibilityBadges = document.getElementById("eligibilityBadges");
-      const remarkJuris = document.getElementById("remarkJurisdiction");
-
-      tbodyChart.innerHTML = "";
-      eligibleTbody.innerHTML = "";
-      eligibilityBadges.innerHTML = "";
-      remarkJuris.innerHTML = "";
-
-      if (!roadObj) {
-        if(titleChart) titleChart.innerText = "No Road Selected (Please upload roads Excel)";
-        if(titleElig) titleElig.innerText = "No Road Selected (Please upload roads Excel)";
-        return;
-      }
-
-      const { chartStart, chartEnd, viewLabel } = getRoadLimitsForUser(roadObj);
-      const currentTotalLen = Math.round((chartEnd - chartStart) * 1000) / 1000;
-      const titleText = `[${roadObj.cat}] ${roadObj.name} | View: ${viewLabel} | Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} (Length: ${currentTotalLen.toFixed(3)} Km)`;
-      titleChart.innerText = titleText;
-      titleElig.innerText = titleText;
-
-      const roadWorks = worksHistory.filter(w => w.roadId === roadObj.id);
-      const years = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"];
-
-      // 1. Render Visual Grid (Section 1) - 200m Furlong Split: 0/0 - 0/2...
-      const stepKm = 0.2;
-      for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
-        let bStart = km;
-        let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
-        let chainageLabel = `${formatFurlong(bStart)} - ${formatFurlong(bEnd)}`;
-        let tdHtml = `<td class="border border-slate-400 p-1 font-bold bg-slate-50 text-slate-700 whitespace-nowrap text-[11px]">${chainageLabel}</td>`;
-
-        // Uses global typeHexMap
-        years.forEach(yr => {
-          let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, w.from) < Math.min(bEnd, w.to));
-          if (matched) {
-            let oStart = Math.max(bStart, w.from);
-            let oEnd = Math.min(bEnd, w.to);
-            let pStart = Math.round(((oStart - bStart) / (bEnd - bStart)) * 100);
-            let pEnd = Math.round(((oEnd - bStart) / (bEnd - bStart)) * 100);
-            let hex = typeHexMap[matched.type] || '#3b82f6';
-
-            let cellStyle = '';
-            let isPartial = !(pStart === 0 && pEnd === 100);
-
-            if (!isPartial) {
-              cellStyle = `background-color: ${hex}; color: white;`;
-            } else {
-              cellStyle = `background: linear-gradient(to right, #ffffff 0%, #ffffff ${pStart}%, ${hex} ${pStart}%, ${hex} ${pEnd}%, #ffffff ${pEnd}%, #ffffff 100%); color: ${pEnd - pStart >= 50 ? 'white' : '#0f172a'}; text-shadow: ${pEnd - pStart >= 50 ? '0 1px 2px rgba(0,0,0,0.6)' : 'none'};`;
-            }
-
-            let chainageTag = isPartial ? ` [${formatFurlong(oStart)}-${formatFurlong(oEnd)}]` : '';
-            tdHtml += `<td style="${cellStyle}" class="border border-slate-400 p-1 font-bold text-[10px] leading-tight select-none">${matched.scheme} (${matched.type})${chainageTag}</td>`;
-          } else {
-            tdHtml += `<td class="border border-slate-400 p-1.5 text-slate-300 font-medium">—</td>`;
-          }
-        });
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = tdHtml;
-        tbodyChart.appendChild(tr);
-      }
-
-      // 2. DLP & Stretches Consolidation
-      const consolidated = getRoadStretchesAnalysis(roadObj);
-      let totalEligibleKm = 0, totalDlpKm = 0;
-      let eligibleStrings = [], dlpStrings = [];
-      const subJuris = roadObj.jurisdiction[0] || { sub: "Trichy", sec: "Section" };
-
-      consolidated.forEach((c, idx) => {
-        let len = Math.round((c.end - c.start) * 1000) / 1000;
-        let rangeLabel = `${formatFurlong(c.start)} - ${formatFurlong(c.end)}`;
-
-        if (c.isEligible) {
-          totalEligibleKm += len;
-          eligibleStrings.push(`Km ${rangeLabel} (${len.toFixed(1)} Km)`);
-        } else {
-          totalDlpKm += len;
-          dlpStrings.push(`Km ${rangeLabel} [${(c.work && c.work.scheme) ? c.work.scheme : 'DLP'} - ${(c.work && c.work.year) ? c.work.year : ''}]`);
+      try {
+        if (currentTab === "abstract") {
+          renderRoadAbstracts();
+          return;
         }
 
-        const tr = document.createElement("tr");
-        tr.className = c.isEligible ? "bg-emerald-50/50 hover:bg-emerald-50" : "bg-rose-50/50 hover:bg-rose-50";
+        const roadSelect = document.getElementById("roadSelect");
+        if (!roadSelect) return;
+        const roadId = roadSelect.value;
+        const roadObj = masterRoads.find(r => r.id === roadId);
 
-        let statusText = c.isEligible ?
-          `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-emerald-600 text-white shadow-xs">ELIGIBLE</span>` :
-          `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-rose-600 text-white shadow-xs">DLP (Upto ${(c.work && c.work.dlpExpiryYear) ? c.work.dlpExpiryYear : 'Active'})</span>`;
+        const titleChart = document.getElementById("chartRoadTitle");
+        const titleElig = document.getElementById("eligibleRoadTitle");
+        const tbodyChart = document.getElementById("chartRows");
+        const eligibleTbody = document.getElementById("eligibleTableRows");
+        const eligibilityBadges = document.getElementById("eligibilityBadges");
+        const remarkJuris = document.getElementById("remarkJurisdiction");
 
-        tr.innerHTML = `
-          <td class="p-2 border border-slate-300 font-bold">${idx + 1}</td>
-          <td class="p-2 border border-slate-300 font-semibold">${subJuris.sub}</td>
-          <td class="p-2 border border-slate-300 font-semibold">${subJuris.sec}</td>
-          <td class="p-2 border border-slate-300 font-bold text-slate-900">${roadObj.name}</td>
-          <td class="p-2 border border-slate-300 font-semibold">${roadObj.start.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-semibold">${roadObj.end.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-bold">${roadObj.len.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300 font-extrabold text-blue-900">${formatFurlong(c.start)}</td>
-          <td class="p-2 border border-slate-300 font-extrabold text-blue-900">${formatFurlong(c.end)}</td>
-          <td class="p-2 border border-slate-300 font-black text-emerald-800">${len.toFixed(3)}</td>
-          <td class="p-2 border border-slate-300">${statusText}</td>
-        `;
-        eligibleTbody.appendChild(tr);
-      });
+        if (tbodyChart) tbodyChart.innerHTML = "";
+        if (eligibleTbody) eligibleTbody.innerHTML = "";
+        if (eligibilityBadges) eligibilityBadges.innerHTML = "";
+        if (remarkJuris) remarkJuris.innerHTML = "";
 
-      document.getElementById("totalEligibleBadge").innerText = `Total Eligible Length: ${totalEligibleKm.toFixed(3)} Km`;
-      document.getElementById("totalDlpBadge").innerText = `Under DLP Length: ${totalDlpKm.toFixed(3)} Km`;
+        if (!roadObj) {
+          if (titleChart) titleChart.innerText = "No Road Selected (Please upload roads Excel)";
+          if (titleElig) titleElig.innerText = "No Road Selected (Please upload roads Excel)";
+          return;
+        }
 
-      // 3. Remarks Top Badges
-      let eligText = eligibleStrings.length > 0 ? eligibleStrings.join(", ") : "Nil";
-      let dlpText = dlpStrings.length > 0 ? dlpStrings.join(", ") : "Nil";
+        const { chartStart, chartEnd, viewLabel } = getRoadLimitsForUser(roadObj);
+        const currentTotalLen = Math.round((chartEnd - chartStart) * 1000) / 1000;
+        const titleText = `[${roadObj.cat}] ${roadObj.name} | View: ${viewLabel} | Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} (Length: ${currentTotalLen.toFixed(3)} Km)`;
+        if (titleChart) titleChart.innerText = titleText;
+        if (titleElig) titleElig.innerText = titleText;
 
-      eligibilityBadges.innerHTML = `
-        <div class="bg-emerald-600 text-white p-3 rounded-xl shadow-sm flex flex-col justify-between">
-          <div>
-            <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-100">ELIGIBLE STRETCHES FOR PROPOSAL (${totalEligibleKm.toFixed(1)} Km)</div>
-            <div class="text-sm font-black mt-1 leading-snug">${eligText}</div>
-          </div>
-          <div class="text-[11px] text-emerald-100 mt-2 font-medium">Ready for CRIDP / IRQP / SR inclusion.</div>
-        </div>
-        <div class="bg-rose-600 text-white p-3 rounded-xl shadow-sm flex flex-col justify-between">
-          <div>
-            <div class="text-[11px] font-bold uppercase tracking-wider text-rose-100">UNDER ACTIVE DLP (${totalDlpKm.toFixed(1)} Km)</div>
-            <div class="text-sm font-black mt-1 leading-snug">${dlpText}</div>
-          </div>
-          <div class="text-[11px] text-rose-100 mt-2 font-medium">Cannot be proposed due to active DLP.</div>
-        </div>
-      `;
+        const roadWorks = worksHistory.filter(w => w.roadId === roadObj.id);
+        const years = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"];
 
-      let jurisHtml = `<div class="font-bold text-slate-800 mb-1.5">Subdivision & Section Jurisdiction Distribution:</div><div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
-      roadObj.jurisdiction.forEach(j => {
-        let isCurrent = (currentUser.subdivision === j.sub) ? "font-bold text-blue-900 bg-blue-100 px-1 py-0.5 rounded" : "";
-        jurisHtml += `
-          <div class="bg-white p-2.5 rounded-lg border border-amber-300/80 shadow-xs">
-            <span class="font-bold text-slate-900">${j.sub} Subdivision:</span> Section: <span class="font-semibold text-slate-700">${j.sec}</span> <br>
-            <span class="text-slate-600">Limit: <strong class="${isCurrent}">Km ${j.start.toFixed(3)} mudhal ${j.end.toFixed(3)} varai</strong> (${j.len.toFixed(3)} Km)</span>
-          </div>
-        `;
-      });
-      jurisHtml += `</div>`;
-      remarkJuris.innerHTML = jurisHtml;
-      renderAdminWorksHistoryTable(roadObj.id);
+        // 1. Visual Grid Rendering (200m Furlong Blocks)
+        const stepKm = 0.2;
+        if (tbodyChart) {
+          for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
+            let bStart = km;
+            let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
+            let chainageLabel = `${formatFurlong(bStart)} - ${formatFurlong(bEnd)}`;
+            let tdHtml = `<td class="border border-slate-400 p-1 font-bold bg-slate-50 text-slate-700 whitespace-nowrap text-[11px]">${chainageLabel}</td>`;
+
+            years.forEach(yr => {
+              let matched = roadWorks.find(w => w.year === yr && Math.max(bStart, w.from) < Math.min(bEnd, w.to));
+              if (matched) {
+                let oStart = Math.max(bStart, w.from);
+                let oEnd = Math.min(bEnd, w.to);
+                let pStart = Math.max(0, Math.min(100, Math.round(((oStart - bStart) / (bEnd - bStart)) * 100)));
+                let pEnd = Math.max(0, Math.min(100, Math.round(((oEnd - bStart) / (bEnd - bStart)) * 100)));
+                let hex = (typeof typeHexMap !== 'undefined' && typeHexMap[matched.type]) ? typeHexMap[matched.type] : '#3b82f6';
+
+                let cellStyle = '';
+                let isPartial = !(pStart === 0 && pEnd === 100);
+
+                if (!isPartial) {
+                  cellStyle = `background-color: ${hex}; color: white;`;
+                } else {
+                  cellStyle = `background: linear-gradient(to right, #ffffff 0%, #ffffff ${pStart}%, ${hex} ${pStart}%, ${hex} ${pEnd}%, #ffffff ${pEnd}%, #ffffff 100%); color: ${pEnd - pStart >= 50 ? 'white' : '#0f172a'}; text-shadow: ${pEnd - pStart >= 50 ? '0 1px 2px rgba(0,0,0,0.6)' : 'none'};`;
+                }
+
+                let chainageTag = isPartial ? ` [${formatFurlong(oStart)}-${formatFurlong(oEnd)}]` : '';
+                tdHtml += `<td style="${cellStyle}" class="border border-slate-400 p-1 font-bold text-[10px] leading-tight select-none">${matched.scheme} (${matched.type})${chainageTag}</td>`;
+              } else {
+                tdHtml += `<td class="border border-slate-400 p-1.5 text-slate-300 font-medium">—</td>`;
+              }
+            });
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = tdHtml;
+            tbodyChart.appendChild(tr);
+          }
+        }
+
+        // 2. DLP & Stretches Consolidation
+        const consolidated = getRoadStretchesAnalysis(roadObj);
+        let totalEligibleKm = 0, totalDlpKm = 0;
+        let eligibleStrings = [], dlpStrings = [];
+        const subJuris = (roadObj.jurisdiction && roadObj.jurisdiction[0]) ? roadObj.jurisdiction[0] : { sub: "Trichy", sec: "Section" };
+
+        if (eligibleTbody) {
+          consolidated.forEach((c, idx) => {
+            let len = Math.round((c.end - c.start) * 1000) / 1000;
+            let rangeLabel = `${formatFurlong(c.start)} - ${formatFurlong(c.end)}`;
+
+            if (c.isEligible) {
+              totalEligibleKm += len;
+              eligibleStrings.push(`Km ${rangeLabel} (${len.toFixed(1)} Km)`);
+            } else {
+              totalDlpKm += len;
+              let scName = (c.work && c.work.scheme) ? c.work.scheme : 'Scheme';
+              let scYr = (c.work && c.work.year) ? c.work.year : '';
+              dlpStrings.push(`Km ${rangeLabel} [${scName} - ${scYr}]`);
+            }
+
+            const tr = document.createElement("tr");
+            tr.className = c.isEligible ? "bg-emerald-50/50 hover:bg-emerald-50" : "bg-rose-50/50 hover:bg-rose-50";
+
+            let expYr = (c.work && c.work.dlpExpiryYear) ? c.work.dlpExpiryYear : 'Active';
+            let statusText = c.isEligible ?
+              `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-emerald-600 text-white shadow-xs">ELIGIBLE</span>` :
+              `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-rose-600 text-white shadow-xs">DLP (Upto ${expYr})</span>`;
+
+            tr.innerHTML = `
+              <td class="p-2 border border-slate-300 font-bold">${idx + 1}</td>
+              <td class="p-2 border border-slate-300 font-semibold">${subJuris.sub || 'Trichy'}</td>
+              <td class="p-2 border border-slate-300 font-semibold">${subJuris.sec || 'Section'}</td>
+              <td class="p-2 border border-slate-300 font-bold text-slate-900">${roadObj.name}</td>
+              <td class="p-2 border border-slate-300 font-semibold">${roadObj.start.toFixed(3)}</td>
+              <td class="p-2 border border-slate-300 font-semibold">${roadObj.end.toFixed(3)}</td>
+              <td class="p-2 border border-slate-300 font-bold">${roadObj.len.toFixed(3)}</td>
+              <td class="p-2 border border-slate-300 font-extrabold text-blue-900">${formatFurlong(c.start)}</td>
+              <td class="p-2 border border-slate-300 font-extrabold text-blue-900">${formatFurlong(c.end)}</td>
+              <td class="p-2 border border-slate-300 font-black text-emerald-800">${len.toFixed(3)}</td>
+              <td class="p-2 border border-slate-300">${statusText}</td>
+            `;
+            eligibleTbody.appendChild(tr);
+          });
+        }
+
+        const b1 = document.getElementById("totalEligibleBadge");
+        const b2 = document.getElementById("totalDlpBadge");
+        if (b1) b1.innerText = `Total Eligible Length: ${totalEligibleKm.toFixed(3)} Km`;
+        if (b2) b2.innerText = `Under DLP Length: ${totalDlpKm.toFixed(3)} Km`;
+
+        // 3. Remarks Top Badges & Jurisdiction
+        let eligText = eligibleStrings.length > 0 ? eligibleStrings.join(", ") : "Nil";
+        let dlpText = dlpStrings.length > 0 ? dlpStrings.join(", ") : "Nil";
+
+        if (eligibilityBadges) {
+          eligibilityBadges.innerHTML = `
+            <div class="bg-emerald-600 text-white p-3 rounded-xl shadow-sm flex flex-col justify-between">
+              <div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-100">ELIGIBLE STRETCHES FOR PROPOSAL (${totalEligibleKm.toFixed(1)} Km)</div>
+                <div class="text-sm font-black mt-1 leading-snug">${eligText}</div>
+              </div>
+              <div class="text-[11px] text-emerald-100 mt-2 font-medium">Ready for CRIDP / IRQP / SR inclusion.</div>
+            </div>
+            <div class="bg-rose-600 text-white p-3 rounded-xl shadow-sm flex flex-col justify-between">
+              <div>
+                <div class="text-[11px] font-bold uppercase tracking-wider text-rose-100">UNDER ACTIVE DLP (${totalDlpKm.toFixed(1)} Km)</div>
+                <div class="text-sm font-black mt-1 leading-snug">${dlpText}</div>
+              </div>
+              <div class="text-[11px] text-rose-100 mt-2 font-medium">Cannot be proposed due to active DLP.</div>
+            </div>
+          `;
+        }
+
+        if (remarkJuris && roadObj.jurisdiction) {
+          let jurisHtml = `<div class="font-bold text-slate-800 mb-1.5">Subdivision & Section Jurisdiction Distribution:</div><div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
+          roadObj.jurisdiction.forEach(j => {
+            let isCurrent = (currentUser && currentUser.subdivision === j.sub) ? "font-bold text-blue-900 bg-blue-100 px-1 py-0.5 rounded" : "";
+            jurisHtml += `
+              <div class="bg-white p-2.5 rounded-lg border border-amber-300/80 shadow-xs">
+                <span class="font-bold text-slate-900">${j.sub} Subdivision:</span> Section: <span class="font-semibold text-slate-700">${j.sec}</span> <br>
+                <span class="text-slate-600">Limit: <strong class="${isCurrent}">Km ${j.start.toFixed(3)} mudhal ${j.end.toFixed(3)} varai</strong> (${j.len.toFixed(3)} Km)</span>
+              </div>
+            `;
+          });
+          jurisHtml += `</div>`;
+          remarkJuris.innerHTML = jurisHtml;
+        }
+
+        renderAdminWorksHistoryTable(roadObj.id);
+      } catch (err) {
+        console.error("renderCurrentTab error:", err);
+      }
     }
 
     // =========================================================================
