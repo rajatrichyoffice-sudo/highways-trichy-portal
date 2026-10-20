@@ -672,7 +672,7 @@ async function handleExcelUpload(event) {
           let pc = String(r[8] || '').trim(); // Parliament Constituency
           let cat = String(r[9] || 'ODR').trim().toUpperCase();
           let name = String(r[11]).trim();
-          
+
           // Skip header row if it contains column titles
           if (sub.toLowerCase() === "sub division" || sub.toLowerCase() === "subdivision" || name.toLowerCase().includes("name of the road")) continue;
 
@@ -713,12 +713,13 @@ async function handleExcelUpload(event) {
           localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
 
           // Supabase-kku schema-vudan sariyaana columns mattum payload-aaga anuppudhal
+          let cloudSaved = false;
           if (supabaseClient) {
             try {
               document.getElementById("syncBadge").innerText = "Uploading to Cloud DB...";
-              await supabaseClient.from("master_roads").delete().neq("id", "none");
+              document.getElementById("syncBadge").className = "text-[11px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 animate-pulse";
 
-              const supabasePayload = uploadedList.map(r => ({
+              const cleanPayload = uploadedList.map(r => ({
                 id: r.id,
                 name: r.name,
                 cat: r.cat,
@@ -729,18 +730,31 @@ async function handleExcelUpload(event) {
                 jurisdiction: r.jurisdiction
               }));
 
-              for (let i = 0; i < supabasePayload.length; i += 50) {
-                const chunk = supabasePayload.slice(i, i + 50);
+              await supabaseClient.from("master_roads").delete().neq("id", "none");
+
+              for (let i = 0; i < cleanPayload.length; i += 50) {
+                const chunk = cleanPayload.slice(i, i + 50);
                 const { error: upsertErr } = await supabaseClient.from("master_roads").upsert(chunk);
-                if (upsertErr) console.error("Supabase chunk error:", upsertErr);
+                if (upsertErr) {
+                  console.error("Supabase upsert error:", upsertErr);
+                  throw upsertErr;
+                }
               }
+              cloudSaved = true;
               document.getElementById("syncBadge").innerText = `Cloud Synced (${uploadedList.length} Roads)`;
+              document.getElementById("syncBadge").className = "text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800";
             } catch (err) {
-              console.warn("Cloud DB upload error:", err);
+              console.error("Cloud DB upload error:", err);
+              alert("Warning: Local-il save aagivittadhu, aanaal Supabase Cloud-il save aagavillai! Error: " + (err.message || JSON.stringify(err)));
             }
           }
 
-          alert(`Excel Upload Success! ${masterRoads.length} unique roads successfully compiled and saved to Cloud for all users!`);
+          if (cloudSaved) {
+            alert(`Excel Upload Success! ${masterRoads.length} unique roads successfully saved to Cloud DB! Ella devices (Mobile, Desktop, APK) ippodhu intha data-vai orey maadhiri kaattum.`);
+          } else if (!supabaseClient) {
+            alert(`Excel Upload Success! ${masterRoads.length} roads local-il save aagiyulladhu. Aanaal Supabase client connect aagavillai (Anon Key-ai index.html-il paste seiyavum).`);
+          }
+
           onSubdivisionFilterChange();
         } else {
           alert("Excel file-il roads data kandupidikka mudiyavillai!");
