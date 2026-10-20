@@ -285,10 +285,12 @@
 
     // PWA Service Worker for Mobile / APK Compatibility
     if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
-}
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(reg => console.log('SW Registered!', reg))
+          .catch(err => console.error('SW Error:', err));
+      });
+    }
 
     const userCredentials = {
       "admin": { name: "Super Admin (Division Level)", role: "admin", subdivision: "ALL" },
