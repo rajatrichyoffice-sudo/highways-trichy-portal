@@ -1596,6 +1596,109 @@ const typeHexMap = {
       }).save();
     }
 
+// Admin Works Table-il entries-ai kaattudhal
+    function renderAdminWorksHistoryTable(roadId) {
+      const rowsContainer = document.getElementById("adminWorksHistoryRows");
+      if (!rowsContainer) return;
+      rowsContainer.innerHTML = "";
+
+      const currentWorks = worksHistory
+        .map((w, globalIdx) => ({ ...w, globalIdx }))
+        .filter(w => w.roadId === roadId);
+
+      if (currentWorks.length === 0) {
+        rowsContainer.innerHTML = `<tr><td colspan="7" class="p-2.5 text-slate-400">Intha road-kku innum works history record aagavillai.</td></tr>`;
+        return;
+      }
+
+      currentWorks.forEach((w, i) => {
+        const len = Math.round(Math.abs(w.to - w.from) * 1000) / 1000;
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-blue-50/70 border-b border-blue-100";
+        tr.innerHTML = `
+          <td class="p-1.5 font-bold">${i + 1}</td>
+          <td class="p-1.5 font-extrabold text-blue-900">${formatFurlong(w.from)} - ${formatFurlong(w.to)} <span class="text-[10px] text-slate-500 font-normal">(${w.from.toFixed(3)} - ${w.to.toFixed(3)})</span></td>
+          <td class="p-1.5 font-bold">${len.toFixed(3)}</td>
+          <td class="p-1.5 font-bold text-slate-800">${w.scheme}</td>
+          <td class="p-1.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeColorMap[w.type]}">${w.type}</span></td>
+          <td class="p-1.5 font-semibold">${w.year}</td>
+          <td class="p-1.5 space-x-1 whitespace-nowrap">
+            <button onclick="editWorkEntry(${w.globalIdx})" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-xs transition">Edit</button>
+            <button onclick="deleteWorkEntry(${w.globalIdx})" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-xs transition">Delete</button>
+          </td>
+        `;
+        rowsContainer.appendChild(tr);
+      });
+    }
+
+    // Work Entry-ai Edit seiya inputs-il load seithal
+    function editWorkEntry(globalIdx) {
+      const w = worksHistory[globalIdx];
+      if (!w) return;
+
+      document.getElementById("editWorkId").value = globalIdx;
+      document.getElementById("fromKm").value = w.from;
+      document.getElementById("toKm").value = w.to;
+      document.getElementById("scheme").value = w.scheme;
+      document.getElementById("workType").value = w.type;
+      document.getElementById("year").value = w.year;
+
+      const saveBtn = document.getElementById("saveWorkBtn");
+      const cancelBtn = document.getElementById("cancelEditBtn");
+      saveBtn.innerText = "Update Work";
+      saveBtn.className = "w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg text-xs shadow transition";
+      cancelBtn.classList.remove("hidden");
+
+      document.getElementById("adminPanel").scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Edit-ai cancel seithal
+    function cancelWorkEdit() {
+      document.getElementById("editWorkId").value = "";
+      document.getElementById("fromKm").value = "";
+      document.getElementById("toKm").value = "";
+      document.getElementById("scheme").value = "";
+
+      const saveBtn = document.getElementById("saveWorkBtn");
+      const cancelBtn = document.getElementById("cancelEditBtn");
+      saveBtn.innerText = "Save Work";
+      saveBtn.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs shadow transition";
+      cancelBtn.classList.add("hidden");
+    }
+
+    // Work Entry-ai delete seithal (Cloud + Local)
+    async function deleteWorkEntry(globalIdx) {
+      const w = worksHistory[globalIdx];
+      if (!w) return;
+
+      if (!confirm(`Are you sure you want to DELETE this work entry?\n\nScheme: ${w.scheme}\nLimits: Km ${w.from} to ${w.to}\nYear: ${w.year}`)) {
+        return;
+      }
+
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from("road_works").delete()
+            .match({
+              road_id: w.roadId,
+              from_km: w.from,
+              to_km: w.to,
+              scheme: w.scheme,
+              financial_year: w.year
+            });
+        } catch(err) {
+          console.warn("Supabase delete failed:", err);
+        }
+      }
+
+      worksHistory.splice(globalIdx, 1);
+      localStorage.setItem("highways_works_history", JSON.stringify(worksHistory));
+
+      cancelWorkEdit();
+      renderCurrentTab();
+      alert("Work entry vetrigaramaaga delete seiyappattadhu!");
+    }
+
+    // Pudhiya work add alladhu palaya work-ai update seithal
     async function addCustomWorkEntry() {
       const roadId = document.getElementById("roadSelect").value;
       const fromKm = parseFloat(document.getElementById("fromKm").value);
@@ -1603,6 +1706,7 @@ const typeHexMap = {
       const scheme = document.getElementById("scheme").value.trim();
       const workType = document.getElementById("workType").value;
       const year = document.getElementById("year").value.trim();
+      const editIdxStr = document.getElementById("editWorkId").value;
 
       if (isNaN(fromKm) || isNaN(toKm) || !scheme || !year) {
         alert("Dhayavu seidhu ella fields-aiyum fill pannunga!");
@@ -1615,31 +1719,65 @@ const typeHexMap = {
         return;
       }
 
-      const newEntry = { roadId, from: fromKm, to: toKm, scheme, type: workType, year };
-      worksHistory.push(newEntry);
-      localStorage.setItem("highways_works_history", JSON.stringify(worksHistory));
+      if (editIdxStr !== "") {
+        // UPDATE MODE
+        const globalIdx = parseInt(editIdxStr);
+        const oldWork = worksHistory[globalIdx];
 
-      if (supabaseClient) {
-        try {
-          await supabaseClient.from("road_works").insert([{
-            road_id: roadId,
-            from_km: fromKm,
-            to_km: toKm,
-            scheme: scheme,
-            work_type: workType,
-            financial_year: year
-          }]);
-        } catch(e) {
-          console.warn("Cloud save error:", e);
+        if (supabaseClient && oldWork) {
+          try {
+            await supabaseClient.from("road_works").delete()
+              .match({
+                road_id: oldWork.roadId,
+                from_km: oldWork.from,
+                to_km: oldWork.to,
+                scheme: oldWork.scheme,
+                financial_year: oldWork.year
+              });
+
+            await supabaseClient.from("road_works").insert([{
+              road_id: roadId,
+              from_km: fromKm,
+              to_km: toKm,
+              scheme: scheme,
+              work_type: workType,
+              financial_year: year
+            }]);
+          } catch(err) {
+            console.warn("Supabase update error:", err);
+          }
         }
+
+        worksHistory[globalIdx] = { roadId, from: fromKm, to: toKm, scheme, type: workType, year };
+        localStorage.setItem("highways_works_history", JSON.stringify(worksHistory));
+        cancelWorkEdit();
+        renderCurrentTab();
+        alert(`Work entry vetrigaramaaga update aagivittadhu!`);
+      } else {
+        // ADD NEW MODE
+        const newEntry = { roadId, from: fromKm, to: toKm, scheme, type: workType, year };
+        worksHistory.push(newEntry);
+        localStorage.setItem("highways_works_history", JSON.stringify(worksHistory));
+
+        if (supabaseClient) {
+          try {
+            await supabaseClient.from("road_works").insert([{
+              road_id: roadId,
+              from_km: fromKm,
+              to_km: toKm,
+              scheme: scheme,
+              work_type: workType,
+              financial_year: year
+            }]);
+          } catch(e) {
+            console.warn("Cloud save error:", e);
+          }
+        }
+
+        cancelWorkEdit();
+        renderCurrentTab();
+        alert(`Work entry vetrigaramaaga save aagivittadhu! Scheme: ${scheme}, DLP period auto-calculated.`);
       }
-
-      renderCurrentTab();
-      alert(`Work entry vetrigaramaaga save aagivittadhu! Scheme: ${scheme}, DLP period auto-calculated.`);
-
-      document.getElementById("fromKm").value = "";
-      document.getElementById("toKm").value = "";
-      document.getElementById("scheme").value = "";
     }
   </script>
 </body>
