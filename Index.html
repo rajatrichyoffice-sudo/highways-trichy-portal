@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Highways C&M Trichy - Road Chart & Eligible Stretches Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <meta name="theme-color" content="#1d4ed8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Road Chart Trichy">
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Highways%20C%26M%20Trichy%20-%20Road%20Chart%20Portal%22%2C%22short_name%22%3A%22RoadChart%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%231d4ed8%22%2C%22orientation%22%3A%22any%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20192%20192%27%20fill%3D%27%25231d4ed8%27%253E%253Crect%20width%3D%27192%27%20height%3D%27192%27%20rx%3D%2736%27%20fill%3D%27%25231d4ed8%27%2F%253E%253Ctext%20x%3D%2796%27%20y%3D%27116%27%20font-size%3D%2772%27%20font-weight%3D%27900%27%20fill%3D%27%2523ffffff%27%20text-anchor%3D%27middle%27%20font-family%3D%27sans-serif%27%253ETN%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%2C%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%20fill%3D%27%25231d4ed8%27%253E%253Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%2796%27%20fill%3D%27%25231d4ed8%27%2F%253E%253Ctext%20x%3D%27256%27%20y%3D%27310%27%20font-size%3D%27192%27%20font-weight%3D%27900%27%20fill%3D%27%2523ffffff%27%20text-anchor%3D%27middle%27%20font-family%3D%27sans-serif%27%253ETN%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+  <!-- Supabase Cloud Database Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 font-sans min-h-screen text-slate-800">
+
+  <!-- 1. LOGIN SCREEN -->
+  <div id="loginScreen" class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-blue-700 text-white flex items-center justify-center rounded-2xl mx-auto mb-3 text-2xl font-black shadow-lg shadow-blue-500/30">TN</div>
+        <h2 class="text-lg font-black text-slate-900 uppercase tracking-wider">Highways Department</h2>
+        <p class="text-xs font-bold text-blue-700 uppercase">Construction & Maintenance, Trichy Division</p>
+        <p class="text-xs text-slate-500 mt-1">Road Chart & DLP Eligible Stretches Portal</p>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">User ID</label>
+          <input type="text" id="loginUsername" placeholder="e.g. admin, srirangam, lalgudi..." class="w-full border border-slate-300 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50 focus:bg-white transition">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" class="w-full border border-slate-300 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50 focus:bg-white transition" onkeydown="if(event.key==='Enter')handleLogin()">
+        </div>
+        <p id="loginError" class="text-xs text-rose-600 hidden font-bold">User ID / Password thettanu!</p>
+        <button onclick="handleLogin()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-xl text-sm shadow-lg shadow-blue-700/20 transition">
+          Sign In
+        </button>
+      </div>
+      <div class="mt-6 pt-4 border-t text-center text-[11px] text-slate-400 font-medium">
+        Trichy | Srirangam | Thiruverumbur | Lalgudi | Manapparai
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. DASHBOARD SCREEN -->
+  <div id="dashboardScreen" class="hidden p-4 max-w-7xl mx-auto space-y-4">
+    
+    <header class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+      <div>
+        <h1 class="text-lg font-black text-slate-900 tracking-tight">Highways Department - Trichy (C&M) Division</h1>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-xs font-medium text-slate-500">Logged in as:</span>
+          <span id="userBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800">Admin</span>
+          <span id="jurisdictionBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">Division Level</span>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <label id="uploadBtnLabel" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold shadow cursor-pointer transition flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+          Upload Roads Excel
+          <input type="file" id="excelUploadInput" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+        </label>
+        <button id="clearRoadsBtn" onclick="clearAllRoads()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-xs font-bold shadow transition">
+          Clear All Roads
+        </button>
+        <button onclick="handleLogout()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-xl text-xs font-bold transition">
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <!-- SECTION SWITCHER TABS -->
+    <div class="flex border-b border-slate-300 gap-2">
+      <button id="tabRoadChart" onclick="switchTab('chart')" class="py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-blue-600 bg-white text-blue-700 shadow-xs">
+        Section 1: Visual Road Chart
+      </button>
+      <button id="tabEligible" onclick="switchTab('eligible')" class="py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
+        Section 2: Eligible Stretches & Proposal List
+      </button>
+    </div>
+
+    <!-- Navigation & Filters Bar -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">1. Subdivision Filter</label>
+        <select id="subdivisionSelect" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600" onchange="onSubdivisionFilterChange()">
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">2. Search Road Name</label>
+        <input type="text" id="roadSearchInput" placeholder="Type Road name to filter..." class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 focus:bg-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-600" oninput="onRoadSearchInput()">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">3. Select Road (<span id="roadCountBadge">0</span> roads available)</label>
+        <select id="roadSelect" class="w-full border border-slate-300 p-2 rounded-lg text-xs bg-slate-50 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600" onchange="renderCurrentTab()">
+        </select>
+      </div>
+    </div>
+
+    <!-- REMARKS & DLP SUMMARY BOX -->
+    <div id="remarkBox" class="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-400 p-4 rounded-xl shadow-sm space-y-3">
+      <div class="flex items-center justify-between border-b border-amber-200 pb-2">
+        <h4 class="text-xs font-black text-amber-900 uppercase tracking-wide">
+          Road Limits, Section Distribution & DLP Summary
+        </h4>
+        <span class="text-[11px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">DLP: CRIDP 5 Yrs | SR 3 Yrs</span>
+      </div>
+      <div id="eligibilityBadges" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      <div id="remarkJurisdiction" class="text-xs text-amber-900"></div>
+    </div>
+
+    <!-- ADMIN DATA ENTRY PANEL -->
+    <div id="adminPanel" class="hidden bg-blue-50 border border-blue-200 p-4 rounded-xl shadow-sm">
+      <div class="flex items-center justify-between mb-2.5">
+        <h3 class="font-bold text-xs uppercase tracking-wide text-blue-900">Add / Update Road Scheme Work</h3>
+        <span class="text-[11px] text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded">Super Admin Entry</span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
+        <input type="number" step="0.1" id="fromKm" placeholder="From Km (0.0)" class="w-full border p-2 rounded-lg bg-white">
+        <input type="number" step="0.1" id="toKm" placeholder="To Km (2.0)" class="w-full border p-2 rounded-lg bg-white">
+        <input type="text" id="scheme" placeholder="e.g. CRIDP, SR" class="w-full border p-2 rounded-lg bg-white">
+        <select id="workType" class="w-full border p-2 rounded-lg bg-white font-medium">
+          <option value="Widening & Strengthening">Widening & Strengthening (5 Yrs DLP)</option>
+          <option value="Widening">Widening (5 Yrs DLP)</option>
+          <option value="Strengthening">Strengthening (5 Yrs DLP)</option>
+          <option value="IRQP">IRQP (Riding Quality - 5 Yrs DLP)</option>
+          <option value="Special Repairs">Special Repairs (SR - 3 Yrs DLP)</option>
+          <option value="Periodical Renewal">Periodical Renewal (PR - 3 Yrs DLP)</option>
+        </select>
+        <select id="year" class="w-full border p-2 rounded-lg bg-white font-medium">
+          <option value="2020-21">2020-21</option>
+          <option value="2021-22">2021-22</option>
+          <option value="2022-23">2022-23</option>
+          <option value="2023-24">2023-24</option>
+          <option value="2024-25">2024-25</option>
+          <option value="2025-26" selected>2025-26</option>
+          <option value="2026-27">2026-27</option>
+        </select>
+        <button onclick="addCustomWorkEntry()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs shadow transition">Save Work</button>
+      </div>
+    </div>
+
+    <!-- ================= SECTION 1: ROAD CHART CONTAINER ================= -->
+    <div id="sectionChartContainer" class="space-y-4">
+      <div class="flex justify-end gap-2">
+        <button onclick="printSection('chartPrintArea', 'Road_Chart')" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          Print Road Chart (PDF Only)
+        </button>
+      </div>
+
+      <div id="chartPrintArea" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div class="text-center border-b pb-4 mb-4">
+          <h2 class="text-base font-black uppercase tracking-wider text-slate-900">Highways Department, Tamil Nadu</h2>
+          <h3 class="text-xs font-bold text-slate-600 uppercase">Construction & Maintenance, Tiruchirappalli Division</h3>
+          <div class="mt-2 text-sm font-bold text-blue-900 bg-blue-50 py-1.5 px-4 rounded-full inline-block border border-blue-200" id="chartRoadTitle"></div>
+        </div>
+
+        <h4 class="text-xs font-black uppercase tracking-wide text-slate-800 mb-2">Visual Road Chart (Historical Works Grid)</h4>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap gap-3 text-xs justify-center mb-4 p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+          <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-emerald-700 rounded-sm block"></span> <span>Widening & Strengthening</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-cyan-600 rounded-sm block"></span> <span>Widening</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-amber-500 rounded-sm block"></span> <span>Strengthening</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-purple-600 rounded-sm block"></span> <span>IRQP</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-orange-600 rounded-sm block"></span> <span>Special Repairs (SR)</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 bg-blue-500 rounded-sm block"></span> <span>Periodical Renewal (PR)</span></div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse border border-slate-400 text-center" id="chartTable">
+            <thead>
+              <tr class="bg-slate-100 text-slate-800 font-bold uppercase text-[11px]">
+                <th class="border border-slate-400 p-2 w-36">Chainage (Km)</th>
+                <th class="border border-slate-400 p-2">2020-21</th>
+                <th class="border border-slate-400 p-2">2021-22</th>
+                <th class="border border-slate-400 p-2">2022-23</th>
+                <th class="border border-slate-400 p-2">2023-24</th>
+                <th class="border border-slate-400 p-2">2024-25</th>
+                <th class="border border-slate-400 p-2">2025-26</th>
+                <th class="border border-slate-400 p-2">2026-27</th>
+              </tr>
+            </thead>
+            <tbody id="chartRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= SECTION 2: ELIGIBLE STRETCHES CONTAINER ================= -->
+    <div id="sectionEligibleContainer" class="hidden space-y-4">
+      <div class="flex flex-wrap justify-between items-center gap-2 bg-white p-3 rounded-xl border border-slate-200">
+        <div class="text-xs font-bold text-slate-700">
+          Target Scope: <span id="eligibleScopeBadge" class="text-blue-700 font-black">Current Selected Road</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="exportEligibleToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Export Eligible Stretches (Excel)
+          </button>
+          <button onclick="printSection('eligiblePrintArea', 'Eligible_Stretches')" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Print Eligible Stretches (PDF)
+          </button>
+        </div>
+      </div>
+
+      <div id="eligiblePrintArea" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div class="text-center border-b pb-4 mb-4">
+          <h2 class="text-base font-black uppercase tracking-wider text-slate-900">Highways Department, Tamil Nadu</h2>
+          <h3 class="text-xs font-bold text-slate-600 uppercase">Construction & Maintenance, Tiruchirappalli Division</h3>
+          <div class="mt-2 text-sm font-bold text-emerald-900 bg-emerald-50 py-1.5 px-4 rounded-full inline-block border border-emerald-200" id="eligibleRoadTitle"></div>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-3 mb-3 gap-2">
+          <div>
+            <h4 class="text-sm font-black uppercase tracking-wide text-slate-900">
+              Eligible Stretches Statement for New Proposals & Schemes
+            </h4>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Stretches free from DLP (CRIDP 5 Yrs / SR 3 Yrs completed or no previous schemes).
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold px-3 py-1 bg-emerald-100 text-emerald-800 rounded-lg" id="totalEligibleBadge">Total Eligible Length: 0.000 Km</span>
+            <span class="text-xs font-bold px-3 py-1 bg-rose-100 text-rose-800 rounded-lg" id="totalDlpBadge">Under DLP Length: 0.000 Km</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse border border-slate-300 text-center" id="eligibleExportTable">
+            <thead>
+              <tr class="bg-slate-800 text-white font-bold uppercase text-[11px]">
+                <th class="p-2 border border-slate-300">S.No</th>
+                <th class="p-2 border border-slate-300">Sub Division</th>
+                <th class="p-2 border border-slate-300">Section</th>
+                <th class="p-2 border border-slate-300">Name of Road</th>
+                <th class="p-2 border border-slate-300">Road Start (Km)</th>
+                <th class="p-2 border border-slate-300">Road End (Km)</th>
+                <th class="p-2 border border-slate-300">Total Length (Km)</th>
+                <th class="p-2 border border-slate-300">Eligible Start (Km)</th>
+                <th class="p-2 border border-slate-300">Eligible End (Km)</th>
+                <th class="p-2 border border-slate-300">Eligible Length (Km)</th>
+                <th class="p-2 border border-slate-300">DLP / Eligibility Status</th>
+              </tr>
+            </thead>
+            <tbody id="eligibleTableRows"></tbody>
+          </table>
+        </div>
+
+        <div class="mt-8 flex justify-between items-center text-[11px] text-slate-500 pt-3 border-t">
+          <span>Section Officer / AE (H)</span>
+          <span>Assistant Divisional Engineer (H)</span>
+          <span>Divisional Engineer (H), C&M Trichy</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SCRIPT ENGINE -->
+  <script>
+    // ==========================================
+    // 1. SUPABASE CLOUD CONFIGURATION
+    // (Project URL & Anon Key-ai keezhe paste seiyavum)
+    // ==========================================
+    const SUPABASE_URL = "https://msdgmmfzqukhahfxemwp.supabase.co";       // e.g. "https://xxxx.supabase.co"
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zZGdtbWZ6cXVraGFoZnhlbXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjY5NTEsImV4cCI6MjEwODA0Mjk1MX0.dNLgMjpQqef-ZLq7SixU0HuYtiiF1Jv_3lMPOu8F9co";  // e.g. "eyJhbGciOi..."
+    let supabaseClient = null;
+
+    if (typeof window.supabase !== "undefined" && SUPABASE_URL && SUPABASE_ANON_KEY) {
+      try {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (err) {
+        console.warn("Supabase init fallback:", err);
+      }
+    }
+
+    // PWA Service Worker for Mobile / APK Compatibility
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swBlob = new Blob([
+          `self.addEventListener('install', e => self.skipWaiting());
+           self.addEventListener('activate', e => self.clients.claim());
+           self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));`
+        ], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+      });
+    }
+
+    const userCredentials = {
+      "admin": { name: "Super Admin (Division Level)", role: "admin", subdivision: "ALL" },
+      "srirangam": { name: "Srirangam Subdivision", role: "subdivision", subdivision: "Srirangam" },
+      "thiruverumbur": { name: "Thiruverumbur Subdivision", role: "subdivision", subdivision: "Thiruverumbur" },
+      "trichy": { name: "Trichy Subdivision", role: "subdivision", subdivision: "Trichy" },
+      "lalgudi": { name: "Lalgudi Subdivision", role: "subdivision", subdivision: "Lalgudi" },
+      "manapparai": { name: "Manapparai Subdivision", role: "subdivision", subdivision: "Manapparai" }
+    };
+
+    const userPasswords = {
+      "admin": "admin@trichy", "srirangam": "sri@123", "thiruverumbur": "tvb@123",
+      "trichy": "try@123", "lalgudi": "lgi@123", "manapparai": "mpa@123"
+    };
+
+    const initialSampleRoads = [
+      {
+        "id": "rd_1",
+        "name": "Tiruchirappalli - Chidambaram Road",
+        "cat": "SH",
+        "subs": ["Lalgudi", "Thiruverumbur"],
+        "start": 0.0,
+        "end": 21.034,
+        "len": 21.034,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 17.212, "len": 17.212 },
+          { "sub": "Thiruverumbur", "sec": "Thiruverumbur-1", "start": 18.508, "end": 21.034, "len": 2.526 },
+          { "sub": "Thiruverumbur", "sec": "Thiruverumbur-2", "start": 0.0, "end": 0.0, "len": 5.915 }
+        ]
+      },
+      {
+        "id": "rd_2",
+        "name": "Poovalur - Siruganur - Thirupattur Road (MD 371)",
+        "cat": "MDR",
+        "subs": ["Lalgudi"],
+        "start": 0.0,
+        "end": 25.6,
+        "len": 25.6,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 7.0, "len": 7.0 },
+          { "sub": "Lalgudi", "sec": "Manachanallur", "start": 7.0, "end": 14.4, "len": 7.4 },
+          { "sub": "Lalgudi", "sec": "Manachanallur", "start": 14.4, "end": 25.6, "len": 11.2 }
+        ]
+      },
+      {
+        "id": "rd_3",
+        "name": "Pullambady - Sirugalapur - Padalur Road (MD.380)",
+        "cat": "MDR",
+        "subs": ["Lalgudi"],
+        "start": 0.0,
+        "end": 23.6,
+        "len": 23.6,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 6.0, "len": 6.0 },
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 6.0, "end": 12.0, "len": 6.0 },
+          { "sub": "Lalgudi", "sec": "Manachanallur", "start": 12.0, "end": 23.6, "len": 11.6 }
+        ]
+      },
+      {
+        "id": "rd_4",
+        "name": "Siruthaiyur - Sengaraiyur Road (Via) Anbil  (M 1125)",
+        "cat": "MDR",
+        "subs": ["Lalgudi", "Thiruverumbur"],
+        "start": 0.0,
+        "end": 13.6,
+        "len": 13.6,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 3.0, "len": 3.0 },
+          { "sub": "Thiruverumbur", "sec": "Thiruverumbur-2", "start": 3.0, "end": 13.6, "len": 10.6 }
+        ]
+      },
+      {
+        "id": "rd_5",
+        "name": "Mandapam -Pervalappur Road (via)Kumulur - Kannakudy  (MD 1126)",
+        "cat": "MDR",
+        "subs": ["Lalgudi"],
+        "start": 0.0,
+        "end": 10.6,
+        "len": 10.6,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 10.6, "len": 10.6 }
+        ]
+      },
+      {
+        "id": "rd_6",
+        "name": "Tiruchirapalli - Chithambaram Byepass Road (MD 460)",
+        "cat": "MDR",
+        "subs": ["Lalgudi"],
+        "start": 0.0,
+        "end": 1.8,
+        "len": 1.8,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 1.8, "len": 1.8 }
+        ]
+      },
+      {
+        "id": "rd_7",
+        "name": "Irungalur - Sengenthi Road",
+        "cat": "ODR",
+        "subs": ["Lalgudi", "Srirangam"],
+        "start": 0.0,
+        "end": 14.4,
+        "len": 14.4,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 8.0, "end": 14.4, "len": 6.4 },
+          { "sub": "Srirangam", "sec": "Srirangam-1", "start": 0.0, "end": 8.0, "len": 8.0 }
+        ]
+      },
+      {
+        "id": "rd_8",
+        "name": "Pullambady - vidthalaipuram Road (via) Vanthalai - Gudalur - Kanakiliyanallur",
+        "cat": "ODR",
+        "subs": ["Lalgudi"],
+        "start": 0.0,
+        "end": 9.8,
+        "len": 9.8,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 0.0, "end": 9.8, "len": 9.8 }
+        ]
+      },
+      {
+        "id": "rd_9",
+        "name": "Puthur-Uthamanur-Vellanur Road",
+        "cat": "ODR",
+        "subs": ["Lalgudi"],
+        "start": 5.8,
+        "end": 12.8,
+        "len": 7.0,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 5.8, "end": 12.8, "len": 7.0 }
+        ]
+      },
+      {
+        "id": "rd_10",
+        "name": "Pullampady-Karudamangalam Road",
+        "cat": "ODR",
+        "subs": ["Lalgudi"],
+        "start": 9.8,
+        "end": 16.2,
+        "len": 6.4,
+        "jurisdiction": [
+          { "sub": "Lalgudi", "sec": "Lalgudi", "start": 9.8, "end": 16.2, "len": 6.4 }
+        ]
+      }
+    ];
+
+    let masterRoads = [];
+    const saved = localStorage.getItem("highways_master_roads");
+    if (saved) {
+      try { masterRoads = JSON.parse(saved); } catch(e) { masterRoads = initialSampleRoads; }
+    } else {
+      masterRoads = initialSampleRoads;
+    }
+
+    let worksHistory = [
+      { roadId: "rd_3", from: 0.0, to: 2.0, scheme: "CRIDP", type: "Widening & Strengthening", year: "2025-26" },
+      { roadId: "rd_3", from: 5.0, to: 7.0, scheme: "Special Repairs (SR)", type: "Special Repairs", year: "2023-24" }
+    ];
+
+    const typeColorMap = {
+      "Widening & Strengthening": "bg-emerald-700 text-white",
+      "Widening": "bg-cyan-600 text-white",
+      "Strengthening": "bg-amber-500 text-white",
+      "IRQP": "bg-purple-600 text-white",
+      "Special Repairs": "bg-orange-600 text-white",
+      "Periodical Renewal": "bg-blue-500 text-white"
+    };
+
+    const CURRENT_FY_START_YEAR = 2026;
+    let currentUser = null;
+    let currentTab = "chart";
+
+    function handleLogin() {
+      const u = document.getElementById("loginUsername").value.trim().toLowerCase();
+      const p = document.getElementById("loginPassword").value.trim();
+      const err = document.getElementById("loginError");
+
+      if (userCredentials[u] && userPasswords[u] === p) {
+        currentUser = userCredentials[u];
+        err.classList.add("hidden");
+        document.getElementById("loginScreen").classList.add("hidden");
+        document.getElementById("dashboardScreen").classList.remove("hidden");
+        initDashboard();
+      } else {
+        err.classList.remove("hidden");
+      }
+    }
+
+    function handleLogout() {
+      currentUser = null;
+      document.getElementById("loginUsername").value = "";
+      document.getElementById("loginPassword").value = "";
+      document.getElementById("dashboardScreen").classList.add("hidden");
+      document.getElementById("loginScreen").classList.remove("hidden");
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const btnChart = document.getElementById("tabRoadChart");
+      const btnElig = document.getElementById("tabEligible");
+      const contChart = document.getElementById("sectionChartContainer");
+      const contElig = document.getElementById("sectionEligibleContainer");
+
+      if (tab === "chart") {
+        btnChart.className = "py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-blue-600 bg-white text-blue-700 shadow-xs";
+        btnElig.className = "py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+        contChart.classList.remove("hidden");
+        contElig.classList.add("hidden");
+      } else {
+        btnElig.className = "py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl border-t-2 border-x-2 border-emerald-600 bg-white text-emerald-700 shadow-xs";
+        btnChart.className = "py-2.5 px-5 font-bold text-xs uppercase tracking-wider rounded-t-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition";
+        contElig.classList.remove("hidden");
+        contChart.classList.add("hidden");
+      }
+      renderCurrentTab();
+    }
+
+    function initDashboard() {
+      document.getElementById("userBadge").innerText = currentUser.name;
+      const subSelect = document.getElementById("subdivisionSelect");
+      const adminPanel = document.getElementById("adminPanel");
+      const uploadBtn = document.getElementById("uploadBtnLabel");
+      const clearBtn = document.getElementById("clearRoadsBtn");
+      const jurisBadge = document.getElementById("jurisdictionBadge");
+
+      subSelect.innerHTML = "";
+
+      if (currentUser.role === "admin") {
+        adminPanel.classList.remove("hidden");
+        uploadBtn.classList.remove("hidden");
+        clearBtn.classList.remove("hidden");
+        jurisBadge.innerText = "Division Level View (Full Stretch)";
+        jurisBadge.className = "text-xs font-bold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800";
+        subSelect.innerHTML = `
+          <option value="ALL">All Subdivisions (Full Division Master)</option>
+          <option value="Lalgudi">Lalgudi Subdivision</option>
+          <option value="Manapparai">Manapparai Subdivision</option>
+          <option value="Srirangam">Srirangam Subdivision</option>
+          <option value="Thiruverumbur">Thiruverumbur Subdivision</option>
+          <option value="Trichy">Trichy Subdivision</option>
+        `;
+      } else {
+        adminPanel.classList.add("hidden");
+        uploadBtn.classList.add("hidden");
+        clearBtn.classList.add("hidden");
+        jurisBadge.innerText = `${currentUser.subdivision} Subdivision Jurisdiction`;
+        jurisBadge.className = "text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800";
+        subSelect.innerHTML = `<option value="${currentUser.subdivision}">${currentUser.subdivision} Subdivision</option>`;
+      }
+
+      onSubdivisionFilterChange();
+    }
+
+    function handleExcelUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        let roadMap = {};
+        for (let i = 2; i < rows.length; i++) {
+          let r = rows[i];
+          if (!r || !r[4] || !r[11]) continue;
+          let sub = String(r[4]).trim();
+          let sec = String(r[5] || sub).trim();
+          let cat = String(r[9] || 'ODR').trim();
+          let name = String(r[11]).trim();
+          let start = parseFloat(r[12]) || 0;
+          let end = parseFloat(r[13]) || 0;
+          let len = parseFloat(r[14]) || (end - start);
+
+          if (!roadMap[name]) {
+            roadMap[name] = { id: "rd_" + (Object.keys(roadMap).length + 1), name: name, cat: cat, subs: [], start: start, end: end, jurisdiction: [] };
+          }
+          if (!roadMap[name].subs.includes(sub)) roadMap[name].subs.push(sub);
+          roadMap[name].jurisdiction.push({ sub: sub, sec: sec, start: start, end: end, len: len });
+          roadMap[name].start = Math.min(roadMap[name].start, start);
+          roadMap[name].end = Math.max(roadMap[name].end, end);
+          roadMap[name].len = Math.round((roadMap[name].end - roadMap[name].start) * 1000) / 1000;
+        }
+
+        const uploadedList = Object.values(roadMap);
+        if (uploadedList.length > 0) {
+          masterRoads = uploadedList;
+          localStorage.setItem("highways_master_roads", JSON.stringify(masterRoads));
+          alert(`Excel Upload Success! ${masterRoads.length} unique roads browser cache-il save aagiyulladhu.`);
+          onSubdivisionFilterChange();
+        } else {
+          alert("Excel file-il roads data kandupidikka mudiyavillai!");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function clearAllRoads() {
+      if (confirm("Unga division-il ulla roads data pooraava clear panna venduma?")) {
+        localStorage.removeItem("highways_master_roads");
+        masterRoads = [];
+        onSubdivisionFilterChange();
+        alert("Roads data clear aagivittadhu! Upload button click panni pudhiya Excel upload pannalaam.");
+      }
+    }
+
+    function onSubdivisionFilterChange() {
+      populateRoadDropdown();
+    }
+
+    function onRoadSearchInput() {
+      populateRoadDropdown();
+    }
+
+    function populateRoadDropdown() {
+      const selectedSub = document.getElementById("subdivisionSelect").value;
+      const searchTerm = document.getElementById("roadSearchInput").value.trim().toLowerCase();
+      const roadSelect = document.getElementById("roadSelect");
+      roadSelect.innerHTML = "";
+
+      let list = masterRoads;
+      if (selectedSub !== "ALL") {
+        list = list.filter(r => r.subs.includes(selectedSub));
+      }
+      if (searchTerm) {
+        list = list.filter(r => r.name.toLowerCase().includes(searchTerm) || r.cat.toLowerCase().includes(searchTerm));
+      }
+
+      document.getElementById("roadCountBadge").innerText = list.length;
+
+      if (list.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.innerText = "No matching roads found";
+        roadSelect.appendChild(opt);
+        renderCurrentTab();
+        return;
+      }
+
+      list.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.innerText = `[${r.cat}] ${r.name} (Total Km ${r.start.toFixed(1)} - ${r.end.toFixed(1)})`;
+        roadSelect.appendChild(opt);
+      });
+
+      roadSelect.selectedIndex = 0;
+      renderCurrentTab();
+    }
+
+    function formatFurlong(val) {
+      let k = Math.floor(val);
+      let f = Math.round((val - k) * 10);
+      if (f >= 10) { k += 1; f = 0; }
+      return `${k}/${f}`;
+    }
+
+    function getWorkDlpYears(workType, scheme) {
+      const wt = (workType || "").toLowerCase();
+      const sc = (scheme || "").toLowerCase();
+      if (sc.includes("cridp") || wt.includes("widening") || wt.includes("strengthening") || wt.includes("irqp")) {
+        return 5;
+      }
+      if (sc.includes("sr") || wt.includes("special repairs") || wt.includes("periodical renewal")) {
+        return 3;
+      }
+      return 3;
+    }
+
+    function parseFyStartYear(fyString) {
+      const parts = fyString.split("-");
+      if (parts.length > 0) {
+        const y = parseInt(parts[0]);
+        if (!isNaN(y)) return y;
+      }
+      return 2023;
+    }
+
+    function isWorkUnderDlp(work) {
+      const dlpYears = getWorkDlpYears(work.type, work.scheme);
+      const executionYear = parseFyStartYear(work.year);
+      const dlpExpiryYear = executionYear + dlpYears;
+      const underDlp = (CURRENT_FY_START_YEAR < dlpExpiryYear);
+      return { underDlp, dlpYears, executionYear, dlpExpiryYear };
+    }
+
+    function renderCurrentTab() {
+      const roadId = document.getElementById("roadSelect").value;
+      const roadObj = masterRoads.find(r => r.id === roadId);
+      const titleChart = document.getElementById("chartRoadTitle");
+      const titleElig = document.getElementById("eligibleRoadTitle");
+      const tbodyChart = document.getElementById("chartRows");
+      const eligibleTbody = document.getElementById("eligibleTableRows");
+      const eligibilityBadges = document.getElementById("eligibilityBadges");
+      const remarkJuris = document.getElementById("remarkJurisdiction");
+
+      tbodyChart.innerHTML = "";
+      eligibleTbody.innerHTML = "";
+      eligibilityBadges.innerHTML = "";
+      remarkJuris.innerHTML = "";
+
+      if (!roadObj) {
+        if(titleChart) titleChart.innerText = "No Road Selected";
+        if(titleElig) titleElig.innerText = "No Road Selected";
+        return;
+      }
+
+      let chartStart = roadObj.start;
+      let chartEnd = roadObj.end;
+      let viewLabel = "Division Level (Full Stretch)";
+
+      if (currentUser.role === "subdivision") {
+        const subJuris = roadObj.jurisdiction.filter(j => j.sub === currentUser.subdivision);
+        if (subJuris.length > 0) {
+          chartStart = Math.min(...subJuris.map(j => j.start));
+          chartEnd = Math.max(...subJuris.map(j => j.end));
+          viewLabel = `${currentUser.subdivision} Subdivision Limit`;
+        }
+      }
+
+      const currentTotalLen = (chartEnd - chartStart);
+      const titleText = `[${roadObj.cat}] ${roadObj.name} | View: ${viewLabel} | Limits: Km ${chartStart.toFixed(3)} - ${chartEnd.toFixed(3)} (Length: ${currentTotalLen.toFixed(3)} Km)`;
+      titleChart.innerText = titleText;
+      titleElig.innerText = titleText;
+
+      const roadWorks = worksHistory.filter(w => w.roadId === roadObj.id);
+      const years = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"];
+
+      const stepKm = 0.2;
+      for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
+        let bStart = km;
+        let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
+        let chainageLabel = `${formatFurlong(bStart)} - ${formatFurlong(bEnd)}`;
+        let tdHtml = `<td class="border border-slate-400 p-1 font-bold bg-slate-50 text-slate-700 whitespace-nowrap text-[11px]">${chainageLabel}</td>`;
+
+        years.forEach(yr => {
+          let matched = roadWorks.find(w => w.year === yr && bStart >= w.from && bEnd <= w.to);
+          if (matched) {
+            tdHtml += `<td class="border border-slate-400 p-1.5 font-bold ${typeColorMap[matched.type]} text-[11px]">${matched.scheme} (${matched.type})</td>`;
+          } else {
+            tdHtml += `<td class="border border-slate-400 p-1.5 text-slate-300 font-medium">—</td>`;
+          }
+        });
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = tdHtml;
+        tbodyChart.appendChild(tr);
+      }
+
+      let stretchBlocks = [];
+      for (let km = Math.floor(chartStart * 5) / 5; km < chartEnd - 0.001; km = Math.round((km + stepKm) * 10) / 10) {
+        let bStart = km;
+        let bEnd = Math.min(chartEnd, Math.round((km + stepKm) * 10) / 10);
+        let activeDlpWork = null, latestWork = null;
+
+        roadWorks.forEach(w => {
+          if (bStart >= w.from && bEnd <= w.to) {
+            const dlpInfo = isWorkUnderDlp(w);
+            if (dlpInfo.underDlp) activeDlpWork = { ...w, ...dlpInfo };
+            latestWork = { ...w, ...dlpInfo };
+          }
+        });
+
+        stretchBlocks.push({
+          start: bStart,
+          end: bEnd,
+          activeDlpWork: activeDlpWork,
+          latestWork: latestWork,
+          isEligible: (activeDlpWork === null)
+        });
+      }
+
+      let consolidated = [];
+      stretchBlocks.forEach(blk => {
+        if (consolidated.length === 0) {
+          consolidated.push({
+            start: blk.start,
+            end: blk.end,
+            isEligible: blk.isEligible,
+            work: blk.activeDlpWork || blk.latestWork
+          });
+        } else {
+          let last = consolidated[consolidated.length - 1];
+          let sameWork = (!last.work && !blk.work) || (last.work && blk.work && last.work.scheme === blk.work.scheme && last.work.year === blk.work.year);
+          if (last.isEligible === blk.isEligible && sameWork) {
+            last.end = blk.end;
+          } else {
+            consolidated.push({
+              start: blk.start,
+              end: blk.end,
+              isEligible: blk.isEligible,
+              work: blk.activeDlpWork || blk.latestWork
+            });
+          }
+        }
+      });
+
+      let totalEligibleKm = 0, totalDlpKm = 0;
+      let eligibleStrings = [], dlpStrings = [];
+      const subJuris = roadObj.jurisdiction[0] || { sub: "Trichy", sec: "Section" };
+
+      consolidated.forEach((c, idx) => {
+        let len = Math.round((c.end - c.start) * 1000) / 1000;
+        let rangeLabel = `${formatFurlong(c.start)} - ${formatFurlong(c.end)}`;
+
+        if (c.isEligible) {
+          totalEligibleKm += len;
+          eligibleStrings.push(`Km ${rangeLabel} (${len.toFixed(1)} Km)`);
+        } else {
+          totalDlpKm += len;
+          dlpStrings.push(`Km ${rangeLabel} [${c.work.scheme} - ${c.work.year}]`);
+        }
+
+        const tr = document.createElement("tr");
+        tr.className = c.isEligible ? "bg-emerald-50/50 hover:bg-emerald-50" : "bg-rose-50/50 hover:bg-rose-50";
+
+        let statusText = c.isEligible ?
+          `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-emerald-600 text-white shadow-xs">ELIGIBLE</span>` :
+          `<span class="px-2.5 py-1 rounded-full font-black text-xs bg-rose-600 text-white shadow-xs">DLP (Upto ${c.work.dlpExpiryYear})</span>`;
+
+        tr.innerHTML = `
+          <td class="p-2 border border-slate-300 font-bold">${idx + 1}</td>
+          <td class="p-2 border border-slate-300 font-semibold">${subJuris.sub}</td>
+          <td class="p-2 border border-slate-300 font-semibold">${subJuris.sec}</td>
+          <td class="p-2 border border-slate-300 font-bold text-slate-900">${roadObj.name}</td>
+          <td class="p-2 border border-slate-300 font-semibold">${roadObj.start.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-semibold">${roadObj.end.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-bold">${roadObj.len.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300 font-extrabold text-blue-900">${formatFurlong(c.start)}</td>
+          <td class="p-2 border border-slate-300 font-extrabold text-blue-900">${formatFurlong(c.end)}</td>
+          <td class="p-2 border border-slate-300 font-black text-emerald-800">${len.toFixed(3)}</td>
+          <td class="p-2 border border-slate-300">${statusText}</td>
+        `;
+        eligibleTbody.appendChild(tr);
+      });
+
+      document.getElementById("totalEligibleBadge").innerText = `Total Eligible Length: ${totalEligibleKm.toFixed(3)} Km`;
+      document.getElementById("totalDlpBadge").innerText = `Under DLP Length: ${totalDlpKm.toFixed(3)} Km`;
+
+      let eligText = eligibleStrings.length > 0 ? eligibleStrings.join(", ") : "Nil";
+      let dlpText = dlpStrings.length > 0 ? dlpStrings.join(", ") : "Nil";
+
+      eligibilityBadges.innerHTML = `
+        <div class="bg-emerald-600 text-white p-3 rounded-xl shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-100">ELIGIBLE STRETCHES FOR PROPOSAL (${totalEligibleKm.toFixed(1)} Km)</div>
+            <div class="text-sm font-black mt-1 leading-snug">${eligText}</div>
+          </div>
+          <div class="text-[11px] text-emerald-100 mt-2 font-medium">Ready for CRIDP / IRQP / SR inclusion.</div>
+        </div>
+        <div class="bg-rose-600 text-white p-3 rounded-xl shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="text-[11px] font-bold uppercase tracking-wider text-rose-100">UNDER ACTIVE DLP (${totalDlpKm.toFixed(1)} Km)</div>
+            <div class="text-sm font-black mt-1 leading-snug">${dlpText}</div>
+          </div>
+          <div class="text-[11px] text-rose-100 mt-2 font-medium">Cannot be proposed due to active DLP.</div>
+        </div>
+      `;
+
+      let jurisHtml = `<div class="font-bold text-slate-800 mb-1.5">Subdivision & Section Jurisdiction Distribution:</div><div class="grid grid-cols-1 md:grid-cols-2 gap-2">`;
+      roadObj.jurisdiction.forEach(j => {
+        let isCurrent = (currentUser.subdivision === j.sub) ? "font-bold text-blue-900 bg-blue-100 px-1 py-0.5 rounded" : "";
+        jurisHtml += `
+          <div class="bg-white p-2.5 rounded-lg border border-amber-300/80 shadow-xs">
+            <span class="font-bold text-slate-900">${j.sub} Subdivision:</span> Section: <span class="font-semibold text-slate-700">${j.sec}</span> <br>
+            <span class="text-slate-600">Limit: <strong class="${isCurrent}">Km ${j.start.toFixed(3)} mudhal ${j.end.toFixed(3)} varai</strong> (${j.len.toFixed(3)} Km)</span>
+          </div>
+        `;
+      });
+      jurisHtml += `</div>`;
+      remarkJuris.innerHTML = jurisHtml;
+    }
+
+    function exportEligibleToExcel() {
+      const table = document.getElementById("eligibleExportTable");
+      const wb = XLSX.utils.table_to_book(table, { sheet: "Eligible_Stretches" });
+      const roadSelect = document.getElementById("roadSelect");
+      const roadName = roadSelect.options[roadSelect.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, "_") || "Road";
+      XLSX.writeFile(wb, `${roadName}_Eligible_Stretches.xlsx`);
+    }
+
+    function printSection(elementId, filePrefix) {
+      const element = document.getElementById(elementId);
+      const roadSelect = document.getElementById("roadSelect");
+      const roadName = roadSelect.options[roadSelect.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, "_") || "Road";
+
+      html2pdf().from(element).set({
+        margin: [5, 5, 5, 5],
+        filename: `${roadName}_${filePrefix}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      }).save();
+    }
+
+    function addCustomWorkEntry() {
+      const roadId = document.getElementById("roadSelect").value;
+      const fromKm = parseFloat(document.getElementById("fromKm").value);
+      const toKm = parseFloat(document.getElementById("toKm").value);
+      const scheme = document.getElementById("scheme").value.trim();
+      const workType = document.getElementById("workType").value;
+      const year = document.getElementById("year").value.trim();
+
+      if (isNaN(fromKm) || isNaN(toKm) || !scheme || !year) {
+        alert("Dhayavu seidhu ella fields-aiyum fill pannunga!");
+        return;
+      }
+
+      const roadObj = masterRoads.find(r => r.id === roadId);
+      if (fromKm < roadObj.start || toKm > roadObj.end) {
+        alert(`Chainage thavaraga ulladhu! Intha road muzhu division limit: Km ${roadObj.start} mudhal ${roadObj.end} varai mattum thaan.`);
+        return;
+      }
+
+      worksHistory.push({ roadId, from: fromKm, to: toKm, scheme, type: workType, year });
+      renderCurrentTab();
+      alert(`Work entry vetrigaramaaga save aagivittadhu! Scheme: ${scheme}, DLP period auto-calculated.`);
+
+      document.getElementById("fromKm").value = "";
+      document.getElementById("toKm").value = "";
+      document.getElementById("scheme").value = "";
+    }
+  </script>
+</body>
+</html>
